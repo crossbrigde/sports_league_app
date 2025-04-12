@@ -1,5 +1,4 @@
 pluginManagement {
-    // 定义 Flutter SDK 路径
     val properties = java.util.Properties()
     file("local.properties").inputStream().use { properties.load(it) }
     val flutterSdkPath = properties.getProperty("flutter.sdk")
