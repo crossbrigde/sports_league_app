@@ -1,0 +1,20 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
+localProperties.load(new FileInputStream(localPropertiesFile))
+def flutterSdkPath = localProperties.getProperty('flutter.sdk')
+
+include ':app'
+
+plugins {
+    id 'dev.flutter.flutter-gradle-plugin' version '1.0.0'
+}
+
+apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"

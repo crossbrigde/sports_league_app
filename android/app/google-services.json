@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "757686243952",
+    "firebase_url": "https://sports-league-app-d25e2-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "sports-league-app-d25e2",
+    "storage_bucket": "sports-league-app-d25e2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:757686243952:android:bc72f4d367ad7f1ca3dab5",
+        "android_client_info": {
+          "package_name": "com.basta.sports_league_app.sports_league_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlphPjw9Ivsl6Uo9h33Y10T-2LwoIRxpQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:757686243952:android:b23d02268d56dc4ea3dab5",
+        "android_client_info": {
+          "package_name": "com.example.sports_league_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlphPjw9Ivsl6Uo9h33Y10T-2LwoIRxpQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:757686243952:android:896f85863f5d12d1a3dab5",
+        "android_client_info": {
+          "package_name": "com.example.sports_league_app_new"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlphPjw9Ivsl6Uo9h33Y10T-2LwoIRxpQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
