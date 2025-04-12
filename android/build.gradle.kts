@@ -1,23 +1,36 @@
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
+plugins {
+    id("com.android.application")
+    id("kotlin-android")
+    id("dev.flutter.flutter-gradle-plugin") version "1.0.0"
+}
+
+android {
+    namespace = "com.example.sports_league_app_new"
+    compileSdk = 33
+    ndkVersion = "25.2.9519653"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
-}
 
-val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_11.toString()
+    }
 
-subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
-    
-    // 如果需要依赖 app 模块
-    project.evaluationDependsOn(":app")
-}
+    defaultConfig {
+        applicationId = "com.example.sports_league_app_new"
+        minSdk = 21
+        targetSdk = 33
+        versionCode = 1
+        versionName = "1.0"
+    }
 
-tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
 }
 
 flutter {
