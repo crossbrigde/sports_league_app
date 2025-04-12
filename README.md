@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # sports_league_app_new
-=======
-# sports_league_app
->>>>>>> d0fa69273906ca67a483ad0e4f4d6a6956ab1b1b
 
 A new Flutter project.
 

@@ -1,11 +1,6 @@
 {
-<<<<<<< HEAD
     "name": "sports_league_app_new",
     "short_name": "sports_league_app_new",
-=======
-    "name": "sports_league_app",
-    "short_name": "sports_league_app",
->>>>>>> d0fa69273906ca67a483ad0e4f4d6a6956ab1b1b
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

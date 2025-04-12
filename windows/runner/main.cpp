@@ -27,11 +27,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-<<<<<<< HEAD
   if (!window.Create(L"sports_league_app_new", origin, size)) {
-=======
-  if (!window.Create(L"sports_league_app", origin, size)) {
->>>>>>> d0fa69273906ca67a483ad0e4f4d6a6956ab1b1b
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
