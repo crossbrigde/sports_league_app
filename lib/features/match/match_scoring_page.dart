@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'models/match.dart';
 import 'models/tournament.dart';
 // 移除這行未使用的導入
@@ -22,6 +23,7 @@ class MatchScoringPage extends StatefulWidget {
 
 class _MatchScoringPageState extends State<MatchScoringPage> {
   late final FirebaseFirestore _firestore;
+  late final DatabaseReference _realtimeDb;
   late Map<String, int> redScores;
   late Map<String, int> blueScores;
   bool _isMatchEnded = false;
@@ -33,6 +35,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
   void initState() {
     super.initState();
     _firestore = FirebaseFirestore.instance;
+    _realtimeDb = FirebaseDatabase.instance.ref();
     redScores = Map<String, int>.from(widget.match.redScores);
     blueScores = Map<String, int>.from(widget.match.blueScores);
     _isMatchEnded = widget.match.status == 'completed';
@@ -57,7 +60,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
       body: Column(
         children: [
           _buildMatchInfo(),
-          _buildScoreBoard(redTotal, blueTotal),
+          _buildScoreBoard(context, redTotal, blueTotal),
           const Spacer(),
           _buildJudgmentButton(),
           // 移除查看進行中比賽的按鈕
@@ -128,6 +131,9 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     tempRedPoints.clear();
     tempBluePoints.clear();
     
+    // 清空Realtime Database中的臨時得分
+    _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
+    
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -138,11 +144,11 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildBodyMap('red', setState),
+                  child: _buildBodyMap('red', setState, context),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: _buildBodyMap('blue', setState),
+                  child: _buildBodyMap('blue', setState, context),
                 ),
               ],
             ),
@@ -153,6 +159,8 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
                 // 取消時也清空臨時得分
                 tempRedPoints.clear();
                 tempBluePoints.clear();
+                // 清空Realtime Database中的臨時得分
+                _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
                 Navigator.pop(context);
               },
               child: const Text('取消'),
@@ -167,11 +175,16 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     );
   }
 
-  Widget _buildBodyMap(String player, StateSetter setState) {
+  Widget _buildBodyMap(String player, StateSetter setState, BuildContext context) {
     final color = player == 'red' ? Colors.red : Colors.blue;
     final points = player == 'red' ? tempBluePoints : tempRedPoints;
     final displayPoints = player == 'red' ? tempRedPoints : tempBluePoints;
     final totalPoints = displayPoints.values.fold(0, (sum, points) => sum + points);
+    
+    // 獲取屏幕尺寸
+    final screenWidth = MediaQuery.of(context).size.width;
+    final bodyWidth = screenWidth * 0.35; // 人形寬度為屏幕寬度的35%
+    final bodyHeight = bodyWidth * 2; // 人形高度為寬度的2倍，保持比例
     
     return Column(
       children: [
@@ -180,35 +193,121 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
           style: TextStyle(color: color, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: 150,
-          height: 300,
-          child: Stack(
-            children: [
-              CustomPaint(
-                size: const Size(150, 300),
-                painter: BodyPainter(color: color.withAlpha(51)), // 0.2 * 255 ≈ 51
-              ),
-              _buildTouchableArea('head', '頭部', const Rect.fromLTWH(50, 0, 50, 50), points, setState),
-              _buildTouchableArea('body', '軀幹', const Rect.fromLTWH(40, 50, 70, 100), points, setState),
-              _buildTouchableArea('leftArm', '左手', const Rect.fromLTWH(0, 50, 40, 100), points, setState),
-              _buildTouchableArea('rightArm', '右手', const Rect.fromLTWH(110, 50, 40, 100), points, setState),
-              _buildTouchableArea('leftLeg', '左腳', const Rect.fromLTWH(40, 150, 35, 150), points, setState),
-              _buildTouchableArea('rightLeg', '右腳', const Rect.fromLTWH(75, 150, 35, 150), points, setState),
-            ],
+        // 使用SingleChildScrollView包裹Stack，解決溢出問題
+        SingleChildScrollView(
+          child: SizedBox(
+            width: bodyWidth,
+            height: bodyHeight * 1.25, // 稍微減小高度比例，從1.3降到1.25
+            child: Stack(
+              children: [
+                CustomPaint(
+                  size: Size(bodyWidth, bodyHeight),
+                  painter: BodyPainter(color: color.withAlpha(51)), // 0.2 * 255 ≈ 51
+                ),
+                _buildTouchableArea('head', '頭部', Rect.fromLTWH(bodyWidth * 0.33, 0, bodyWidth * 0.33, bodyHeight * 0.17), points, setState),
+                _buildTouchableArea('body', '軀幹', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.17, bodyWidth * 0.46, bodyHeight * 0.33), points, setState),
+                _buildTouchableArea('leftArm', '左手', Rect.fromLTWH(0, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
+                _buildTouchableArea('rightArm', '右手', Rect.fromLTWH(bodyWidth * 0.73, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
+                _buildTouchableArea('leftLeg', '左腳', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
+                _buildTouchableArea('rightLeg', '右腳', Rect.fromLTWH(bodyWidth * 0.5, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
+                // 調整區域位置，稍微上移
+                _buildAdjustmentArea('adjustment', '調整', Rect.fromLTWH(bodyWidth * 0.35, bodyHeight * 1.0, bodyWidth * 0.3, bodyHeight * 0.08), points, setState),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        if (totalPoints > 0)
+        if (totalPoints != 0)
           Text(
-            '+$totalPoints',
+            totalPoints > 0 ? '+$totalPoints' : '$totalPoints',
             style: TextStyle(
               color: color,
-              fontSize: 72,  // 從 24 改為 72
+              fontSize: 48,  // 調整為更合適的大小
               fontWeight: FontWeight.bold,
             ),
           ),
       ],
+    );
+  }
+
+  // 新增調整分數區域的方法
+  Widget _buildAdjustmentArea(String part, String label, Rect rect, Map<String, int> points, StateSetter setState) {
+    final score = points[part] ?? 0;
+    return Positioned(
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            // 在 -2, -1, 0, +1, +2 之間循環
+            if (score >= 2) {
+              points[part] = -2; // 從+2變成-2
+            } else {
+              points[part] = score + 1; // 正常遞增
+            }
+            
+            // 更新即時資料庫中的臨時得分
+            _realtimeDb.child('temp_scores').child(widget.match.id).update({
+              'red_temp': tempRedPoints,
+              'blue_temp': tempBluePoints,
+              'last_updated': ServerValue.timestamp,
+            });
+          });
+        },
+        // 長按減分
+        onLongPress: () {
+          setState(() {
+            // 在 -2, -1, 0, +1, +2 之間循環（反向）
+            if (score <= -2) {
+              points[part] = 2; // 從-2變成+2
+            } else {
+              points[part] = score - 1; // 正常遞減
+            }
+            
+            // 更新即時資料庫中的臨時得分
+            _realtimeDb.child('temp_scores').child(widget.match.id).update({
+              'red_temp': tempRedPoints,
+              'blue_temp': tempBluePoints,
+              'last_updated': ServerValue.timestamp,
+            });
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Colors.black26,
+              width: 1,
+            ),
+            color: Colors.grey.withOpacity(0.2), // 調整區域背景色
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                if (score != 0)
+                  Text(
+                    score > 0 ? '+$score' : '$score',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: score > 0 ? Colors.green : Colors.red,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -223,6 +322,12 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
         onTap: () {
           setState(() {
             points[part] = (score + 1) % 3;
+            // 更新即時資料庫中的臨時得分
+            _realtimeDb.child('temp_scores').child(widget.match.id).update({
+              'red_temp': tempRedPoints,
+              'blue_temp': tempBluePoints,
+              'last_updated': ServerValue.timestamp,
+            });
           });
         },
         child: Container(
@@ -232,14 +337,23 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
               width: 1,
             ),
           ),
-          child: Center(
-            child: score > 0 ? Text(
-              '+$score',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+          child: Stack(
+            children: [
+              // 顯示得分
+              Center(
+                child: score > 0 ? FittedBox(
+                  fit: BoxFit.contain,
+                  child: Text(
+                    '+$score',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ) : null,
               ),
-            ) : null,
+              // 移除頭部區域顯示「掉棍」文字
+            ],
           ),
         ),
       ),
@@ -326,6 +440,9 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
           // 清空臨時得分
           tempRedPoints.clear();
           tempBluePoints.clear();
+          
+          // 清空Realtime Database中的臨時得分
+          _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
         });
 
         // 關閉判定對話框
@@ -590,9 +707,15 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     _WinnerResult(this.winner, this.reason);
   }
 
-  Widget _buildScoreBoard(int redTotal, int blueTotal) {
+  Widget _buildScoreBoard(BuildContext context, int redTotal, int blueTotal) {
+      // 獲取屏幕尺寸
+      final screenWidth = MediaQuery.of(context).size.width;
+      // 計算適合的字體大小，根據屏幕寬度調整
+      final scoreFontSize = screenWidth * 0.18; // 屏幕寬度的18%
+      final dividerHeight = scoreFontSize * 1.2; // 分隔線高度與字體大小成比例
+      
       return Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.grey.shade200,
@@ -608,38 +731,48 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Column(
-              children: [
-                const Text('紅方得分', style: TextStyle(color: Colors.red)),
-                const SizedBox(height: 8),
-                Text(
-                  '$redTotal',
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 240,  // 從 48 改為 240
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                children: [
+                  const Text('紅方得分', style: TextStyle(color: Colors.red)),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$redTotal',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: scoreFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Container(
-              height: 240,  // 調整分隔線高度以配合字體
+              height: dividerHeight,
               width: 2,
               color: Colors.grey.shade400,
             ),
-            Column(
-              children: [
-                const Text('藍方得分', style: TextStyle(color: Colors.blue)),
-                const SizedBox(height: 8),
-                Text(
-                  '$blueTotal',
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontSize: 240,  // 從 48 改為 240
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                children: [
+                  const Text('藍方得分', style: TextStyle(color: Colors.blue)),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$blueTotal',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: scoreFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -657,19 +790,19 @@ class BodyPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
 
-    // Draw head
+    // Draw head - 使用相對尺寸繪製
     canvas.drawOval(
       Rect.fromLTWH(size.width * 0.33, 0, size.width * 0.33, size.height * 0.17),
       paint,
     );
     
-    // Draw body
+    // Draw body - 使用相對尺寸繪製
     canvas.drawRect(
       Rect.fromLTWH(size.width * 0.27, size.height * 0.17, size.width * 0.46, size.height * 0.33),
       paint,
     );
     
-    // Draw arms
+    // Draw arms - 使用相對尺寸繪製
     canvas.drawRect(
       Rect.fromLTWH(0, size.height * 0.17, size.width * 0.27, size.height * 0.33),
       paint,
@@ -679,7 +812,7 @@ class BodyPainter extends CustomPainter {
       paint,
     );
     
-    // Draw legs
+    // Draw legs - 使用相對尺寸繪製
     canvas.drawRect(
       Rect.fromLTWH(size.width * 0.27, size.height * 0.5, size.width * 0.23, size.height * 0.5),
       paint,
@@ -694,4 +827,4 @@ class BodyPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
   }
-} // Add this missing closing brace
+}

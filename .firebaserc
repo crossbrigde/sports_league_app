@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "sports-league-app-d25e2"
-  }
+  },
+  "targets": {
+    "sports-league-app-d25e2": {
+      "hosting": {
+        "main-app": [
+          "sports-league-app-d25e2"
+        ],
+        "scoreboard": [
+          "scoreboard-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

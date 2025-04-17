@@ -6,9 +6,9 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
+        // 修改为兼容的Gradle插件版本
+        classpath 'com.android.tools.build:gradle:7.4.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        // 如果需要 Firebase，请添加以下内容
         classpath 'com.google.gms:google-services:4.3.15'
     }
 }

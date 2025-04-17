@@ -13,7 +13,7 @@ Future<void> main() async {
       projectId: "sports-league-app-d25e2",
       messagingSenderId: "757686243952",
       appId: "1:757686243952:web:123456789abcdef",  // 临时使用默认值，请替换为实际值
-      // 其他必要参数
+      databaseURL: "https://sports-league-app-d25e2-default-rtdb.asia-southeast1.firebasedatabase.app",
       authDomain: "sports-league-app-d25e2.firebaseapp.com",
       storageBucket: "sports-league-app-d25e2.appspot.com",
     ),

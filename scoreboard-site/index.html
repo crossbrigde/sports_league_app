@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>武術競賽記分板</title>
+
+  <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
+  <script>
+    // 初始化Firebase配置
+    const firebaseConfig = {
+    projectId: "sports-league-app-d25e2",
+    databaseURL: "https://sports-league-app-d25e2-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
+  firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <!-- 字型：Orbitron -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+body {
+  margin: 0;
+  background-color: #ECEFF1;
+  font-family: 'Orbitron', sans-serif;
+  color: white;
+}
+
+#matchContainer {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  
+}
+
+.match-button {
+  width: 100%;
+  margin: 10px 0;
+  padding: 15px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: black;
+}
+
+.match-button:hover {
+  background: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.match-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  
+}
+
+.match-details {
+  color: #666;
+  font-size: 14px;
+  
+  
+}
+
+/* ✅ 記分板 */
+.scoreboard {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column; /* 🟢 加這行 */
+  background: black;
+}
+
+.fullscreen-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #444;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.round {
+  font-size: 2vw;
+  color: #bbb;
+  margin-top: 20px;
+  text-align: center; /* ← 加這一行就能讓文字置中 */
+  
+}
+
+.score-display {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  align-items: stretch;
+}
+
+/* 🟥 紅方 / 🟦 藍方 */
+.score-block {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.red-block {
+  background-color: #ff3b30;
+}
+
+.blue-block {
+  background-color: #007aff;
+}
+
+.score-label {
+  font-size: 2.5vw;
+  margin-bottom: 20px;
+}
+
+.score-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.score-value {
+  font-size: 20vw;
+  font-weight: bold;
+  line-height: 1;
+  z-index: 1;
+}
+
+/* 🆕 浮動的臨時得分 (+1, +2...) */
+.temp-score {
+  position: fixed; /* ← 直接相對整個畫面 */
+  top: 42vh;        /* 距離畫面上方 42% 高度 */
+  font-size: 6vw;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* 正數值顯示為綠色 */
+.temp-score-positive {
+  color: rgba(0, 255, 0, 0.95);
+}
+
+/* 負數值顯示為紅色 */
+.temp-score-negative {
+  color: rgba(255, 0, 0, 0.95);
+}
+
+/* 紅方 → 偏左一點 */
+#redTempScore {
+  left: 45vw;
+}
+
+/* 藍方 → 偏右一點 */
+#blueTempScore {
+  left: 55vw;
+}
+
+.last-hit {
+  padding: 20px;
+  font-size: 1.8vw;
+  color: #ccc;
+  text-align: center;
+  background-color: #111;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0; /* 🟢 防止它被壓縮 */
+}
+  </style>
+</head>
+<body>
+
+  <div id="matchContainer">
+    <h1>進行中的比賽</h1>
+    <div id="matchList" class="loading">載入比賽中...</div>
+
+    <div id="scoreboard" class="scoreboard" style="display: none;">
+      <button class="fullscreen-btn" onclick="toggleFullscreen()">全螢幕</button>
+
+      <div class="round" id="matchName"></div>
+
+        <div class="score-display" style="position: relative;">
+    
+        <div class="score-block red-block">
+          <div class="score-label" id="redPlayer">紅方</div>
+          <div class="score-wrapper">
+            <div class="score-value" id="redScore">0</div>
+
+         </div>
+        </div>
+        <div class="score-block blue-block">
+          <div class="score-label" id="bluePlayer">藍方</div>
+          <div class="score-wrapper">
+            <div class="score-value" id="blueScore">0</div>
+          </div>
+       </div>
+      </div>
+
+
+      <div class="last-hit" id="lastHit">等待記分...</div>
+    </div>
+    <div class="temp-score" id="redTempScore"></div>
+    <div class="temp-score" id="blueTempScore"></div>
+  </div>
+
+  <script>
+    function toggleFullscreen() {
+      const el = document.documentElement;
+      if (!document.fullscreenElement) {
+        el.requestFullscreen().catch(err => alert(`無法進入全螢幕: ${err.message}`));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const matchList = document.getElementById('matchList');
+      const scoreboard = document.getElementById('scoreboard');
+
+      try {
+        firebase.app().firestore().collection('matches')
+          .where('basic_info.status', '==', 'ongoing')
+          .onSnapshot((snapshot) => {
+            if (snapshot.empty) {
+              matchList.innerHTML = '<div class="loading">目前沒有進行中的比賽</div>';
+              return;
+            }
+
+            matchList.innerHTML = '';
+            snapshot.forEach((doc) => {
+              const match = doc.data().basic_info;
+              const button = document.createElement('button');
+              button.className = 'match-button';
+              button.innerHTML = `
+                <div class="match-title">${match.tournamentName}</div>
+                <div class="match-details">
+                  比賽場次: ${match.matchNumber}<br>
+                  紅方: ${match.redPlayer} vs 藍方: ${match.bluePlayer}
+                </div>
+              `;
+              button.onclick = () => showScoreboard(doc.id);
+              matchList.appendChild(button);
+            });
+          });
+
+        function showScoreboard(matchId) {
+          matchList.style.display = 'none';
+          document.querySelector('h1').style.display = 'none';
+
+          firebase.app().firestore().collection('matches')
+            .doc(matchId)
+            .onSnapshot((doc) => {
+              const data = doc.data();
+              const match = data.basic_info;
+              const scores = data.scores;
+              const judgments = data.judgments;            
+
+              document.getElementById('redPlayer').textContent = `紅方 - ${match.redPlayer}`;
+              document.getElementById('bluePlayer').textContent = `藍方 - ${match.bluePlayer}`;
+              document.getElementById('redScore').textContent = scores?.redScores?.total ?? 0;
+              document.getElementById('blueScore').textContent = scores?.blueScores?.total ?? 0;
+              document.getElementById('matchName').textContent = match.name;
+
+              let hitInfo = '等待記分...';
+
+                if (judgments && judgments.length > 0) {
+                 const lastJudgment = judgments[judgments.length - 1];
+                 const parts = [];
+
+                if (lastJudgment.redPoints > 0) {
+                 const redHits = [];
+                 const hits = lastJudgment.redHitLocations || {};
+                 if (hits.leftLeg) redHits.push('左腳');
+                 if (hits.rightLeg) redHits.push('右腳');
+                 if (hits.leftArm) redHits.push('左手');
+                 if (hits.rightArm) redHits.push('右手');
+                 if (hits.body) redHits.push('軀幹');
+                 if (hits.head) redHits.push('頭部');
+                 parts.push(`紅方擊中藍方${redHits.join('、')}得${lastJudgment.redPoints}分`);
+  }
+
+            if (lastJudgment.bluePoints > 0) {
+             const blueHits = [];
+             const hits = lastJudgment.blueHitLocations || {};
+                 if (hits.leftLeg) blueHits.push('左腳');
+                 if (hits.rightLeg) blueHits.push('右腳');
+                 if (hits.leftArm) blueHits.push('左手');
+                 if (hits.rightArm) blueHits.push('右手');
+                 if (hits.body) blueHits.push('軀幹');
+                 if (hits.head) blueHits.push('頭部');
+                 parts.push(`藍方擊中紅方${blueHits.join('、')}得${lastJudgment.bluePoints}分`);
+  }
+
+             if (parts.length > 0) {
+               hitInfo = parts.join('｜');  // 中間用「｜」分隔兩邊結果
+  }
+}
+
+              document.getElementById('lastHit').textContent = hitInfo;
+              scoreboard.style.display = 'flex';
+            });
+
+          // 監聽臨時得分變化
+          const tempScoresRef = firebase.app().database().ref(`temp_scores/${matchId}`);
+          console.log('監聽Realtime Database路徑:', `temp_scores/${matchId}`);
+          tempScoresRef.on('value', (snapshot) => {
+            console.log('收到Realtime Database更新:', snapshot.val());
+            const tempScores = snapshot.val() || {};
+            console.log('處理後的臨時得分:', tempScores);
+            const redTemp = Object.values(tempScores.red_temp || {}).reduce((sum, score) => sum + score, 0);
+            const blueTemp = Object.values(tempScores.blue_temp || {}).reduce((sum, score) => sum + score, 0);
+            console.log('計算後的臨時得分 - 紅方:', redTemp, '藍方:', blueTemp);
+            // 修改顯示邏輯，支持負數值
+            const redTempEl = document.getElementById('redTempScore');
+            const blueTempEl = document.getElementById('blueTempScore');
+            
+            // 設置紅方臨時得分
+            redTempEl.textContent = redTemp > 0 ? `+${redTemp}` : (redTemp < 0 ? `${redTemp}` : '');
+            redTempEl.className = 'temp-score';
+            if (redTemp > 0) redTempEl.classList.add('temp-score-positive');
+            if (redTemp < 0) redTempEl.classList.add('temp-score-negative');
+            
+            // 設置藍方臨時得分
+            blueTempEl.textContent = blueTemp > 0 ? `+${blueTemp}` : (blueTemp < 0 ? `${blueTemp}` : '');
+            blueTempEl.className = 'temp-score';
+            if (blueTemp > 0) blueTempEl.classList.add('temp-score-positive');
+            if (blueTemp < 0) blueTempEl.classList.add('temp-score-negative');
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        matchList.innerHTML = '<div class="loading">載入失敗</div>';
+      }
+    });
+  </script>
+</body>
+</html>

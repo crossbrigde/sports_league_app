@@ -53,3 +53,11 @@ build
 !android/gradlew.bat
 !android/gradle/wrapper/gradle-wrapper.jar
 !android/gradle/wrapper/gradle-wrapper.properties
+
+# Firebase Hosting files (DO NOT DELETE)
+!firebase.json
+!.firebaserc
+!404.html
+!index.html
+!package.json
+!package-lock.json
