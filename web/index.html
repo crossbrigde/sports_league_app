@@ -30,9 +30,40 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>sports_league_app_new</title>
+  <meta name="version" content="1.0.1">
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <div id="version-display" style="position: fixed; bottom: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.7); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;"></div>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+  <script>
+    // 版本檢查功能
+    async function checkVersion() {
+      const currentVersion = document.querySelector('meta[name="version"]').content;
+      document.getElementById('version-display').textContent = `v${currentVersion}`;
+      const app = firebase.initializeApp(window.firebaseConfig);
+      const db = firebase.database();
+      const versionRef = db.ref('version');
+      
+      try {
+        const snapshot = await versionRef.once('value');
+        const latestVersion = snapshot.val();
+        if (latestVersion && latestVersion !== currentVersion) {
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('版本檢查失敗:', error);
+      }
+    }
+
+    // PWA啟動時檢查版本
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        checkVersion();
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

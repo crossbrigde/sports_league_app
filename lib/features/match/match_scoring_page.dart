@@ -7,6 +7,65 @@ import 'models/tournament.dart';
 // 移除這行未使用的導入
 // import 'all_ongoing_matches_page.dart'; 
 
+// 將_WinnerResult類移到頂層
+class _WinnerResult {
+  final String winner;
+  final String reason;
+
+  _WinnerResult(this.winner, this.reason);
+}
+
+// 將BodyPainter類移到頂層
+class BodyPainter extends CustomPainter {
+  final Color color;
+
+  BodyPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Draw head - 使用相對尺寸繪製
+    canvas.drawOval(
+      Rect.fromLTWH(size.width * 0.33, 0, size.width * 0.33, size.height * 0.17),
+      paint,
+    );
+    
+    // Draw body - 使用相對尺寸繪製
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.27, size.height * 0.17, size.width * 0.46, size.height * 0.33),
+      paint,
+    );
+    
+    // Draw arms - 使用相對尺寸繪製
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height * 0.17, size.width * 0.27, size.height * 0.33),
+      paint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.73, size.height * 0.17, size.width * 0.27, size.height * 0.33),
+      paint,
+    );
+    
+    // Draw legs - 使用相對尺寸繪製
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.27, size.height * 0.5, size.width * 0.23, size.height * 0.5),
+      paint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.5, size.height * 0.5, size.width * 0.23, size.height * 0.5),
+      paint,
+    );
+  }
+  
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+}
+
 class MatchScoringPage extends StatefulWidget {
   final Match match;
   final Tournament tournament;
@@ -108,6 +167,78 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     );
   }
 
+  Widget _buildScoreBoard(BuildContext context, int redTotal, int blueTotal) {
+    // 獲取屏幕尺寸
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 計算適合的字體大小，根據屏幕寬度調整
+    final scoreFontSize = screenWidth * 0.18; // 屏幕寬度的18%
+    final dividerHeight = scoreFontSize * 1.2; // 分隔線高度與字體大小成比例
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withAlpha(77), // 0.3 * 255 ≈ 77
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                const Text('紅方得分', style: TextStyle(color: Colors.red)),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$redTotal',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: scoreFontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: dividerHeight,
+            width: 2,
+            color: Colors.grey.shade400,
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                const Text('藍方得分', style: TextStyle(color: Colors.blue)),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$blueTotal',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: scoreFontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildJudgmentButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -134,44 +265,70 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     // 清空Realtime Database中的臨時得分
     _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
     
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('判定得分'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildBodyMap('red', setState, context),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildBodyMap('blue', setState, context),
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return StatefulBuilder(
+          builder: (context, setState) => Scaffold(
+            appBar: AppBar(
+              title: const Text('判定得分'),
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  // 取消時也清空臨時得分
+                  tempRedPoints.clear();
+                  tempBluePoints.clear();
+                  // 清空Realtime Database中的臨時得分
+                  _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
+                  Navigator.pop(context);
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => _confirmJudgment(context),
+                  child: const Text('確認判定', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                // 取消時也清空臨時得分
-                tempRedPoints.clear();
-                tempBluePoints.clear();
-                // 清空Realtime Database中的臨時得分
-                _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
-                Navigator.pop(context);
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                // 計算可用高度
+                final availableHeight = constraints.maxHeight;
+                // 計算縮放比例，限制在0.5到1.0之間
+                final scale = (availableHeight / 700).clamp(0.5, 1.0);
+                
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Transform.scale(
+                          scale: scale,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildBodyMap('red', setState, context),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildBodyMap('blue', setState, context),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               },
-              child: const Text('取消'),
             ),
-            FilledButton(
-              onPressed: () => _confirmJudgment(context),
-              child: const Text('確認判定'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -183,37 +340,36 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     
     // 獲取屏幕尺寸
     final screenWidth = MediaQuery.of(context).size.width;
-    final bodyWidth = screenWidth * 0.35; // 人形寬度為屏幕寬度的35%
+    // 在全螢幕模式下，人形寬度可以稍微大一些
+    final bodyWidth = screenWidth * 0.4; // 人形寬度為屏幕寬度的40%
     final bodyHeight = bodyWidth * 2; // 人形高度為寬度的2倍，保持比例
     
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           player == 'red' ? '紅方' : '藍方',
-          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: 16),
-        // 使用SingleChildScrollView包裹Stack，解決溢出問題
-        SingleChildScrollView(
-          child: SizedBox(
-            width: bodyWidth,
-            height: bodyHeight * 1.25, // 稍微減小高度比例，從1.3降到1.25
-            child: Stack(
-              children: [
-                CustomPaint(
-                  size: Size(bodyWidth, bodyHeight),
-                  painter: BodyPainter(color: color.withAlpha(51)), // 0.2 * 255 ≈ 51
-                ),
-                _buildTouchableArea('head', '頭部', Rect.fromLTWH(bodyWidth * 0.33, 0, bodyWidth * 0.33, bodyHeight * 0.17), points, setState),
-                _buildTouchableArea('body', '軀幹', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.17, bodyWidth * 0.46, bodyHeight * 0.33), points, setState),
-                _buildTouchableArea('leftArm', '左手', Rect.fromLTWH(0, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
-                _buildTouchableArea('rightArm', '右手', Rect.fromLTWH(bodyWidth * 0.73, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
-                _buildTouchableArea('leftLeg', '左腳', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
-                _buildTouchableArea('rightLeg', '右腳', Rect.fromLTWH(bodyWidth * 0.5, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
-                // 調整區域位置，稍微上移
-                _buildAdjustmentArea('adjustment', '調整', Rect.fromLTWH(bodyWidth * 0.35, bodyHeight * 1.0, bodyWidth * 0.3, bodyHeight * 0.08), points, setState),
-              ],
-            ),
+        SizedBox(
+          width: bodyWidth,
+          height: bodyHeight * 1.25,
+          child: Stack(
+            children: [
+              CustomPaint(
+                size: Size(bodyWidth, bodyHeight),
+                painter: BodyPainter(color: color.withAlpha(51)), // 0.2 * 255 ≈ 51
+              ),
+              _buildTouchableArea('head', '頭部', Rect.fromLTWH(bodyWidth * 0.33, 0, bodyWidth * 0.33, bodyHeight * 0.17), points, setState),
+              _buildTouchableArea('body', '軀幹', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.17, bodyWidth * 0.46, bodyHeight * 0.33), points, setState),
+              _buildTouchableArea('leftArm', '左手', Rect.fromLTWH(0, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
+              _buildTouchableArea('rightArm', '右手', Rect.fromLTWH(bodyWidth * 0.73, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
+              _buildTouchableArea('leftLeg', '左腳', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
+              _buildTouchableArea('rightLeg', '右腳', Rect.fromLTWH(bodyWidth * 0.5, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
+              // 調整區域位置，稍微上移
+              _buildAdjustmentArea('adjustment', '調整', Rect.fromLTWH(bodyWidth * 0.35, bodyHeight * 1.0, bodyWidth * 0.3, bodyHeight * 0.08), points, setState),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -570,261 +726,191 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
   void _showDetermineWinnerDialog() async {
     final redTotal = redScores.values.fold(0, (sum, score) => sum + score);
     final blueTotal = blueScores.values.fold(0, (sum, score) => sum + score);
-      
-      // 先詢問是否依分數判定
-      final useScores = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('判定勝負'),
-          content: Text('紅方：$redTotal 分\n藍方：$blueTotal 分\n\n是否依分數判定勝負？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('否'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('是'),
+    
+    // 顯示確認對話框
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('確定勝負'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('紅方總分：$redTotal'),
+            Text('藍方總分：$blueTotal'),
+            const SizedBox(height: 16),
+            const Text('請選擇判定方式：'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final result = await _showManualWinnerSelection('手動判定勝負');
+              if (result != null && mounted) {
+                _endMatch(result.winner, result.reason);
+              }
+            },
+            child: const Text('手動判定'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // 根據得分自動判定勝負
+              if (redTotal > blueTotal) {
+                _endMatch('red', '紅方得分較高：$redTotal vs $blueTotal');
+              } else if (blueTotal > redTotal) {
+                _endMatch('blue', '藍方得分較高：$blueTotal vs $redTotal');
+              } else {
+                // 平局情況，顯示手動判定對話框
+                _showManualWinnerSelection('平局情況下的判定');
+              }
+            },
+            child: const Text('根據得分判定'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<_WinnerResult?> _showManualWinnerSelection(String title) async {
+    return showDialog<_WinnerResult>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('請選擇勝方：'),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    final controller = TextEditingController();
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('輸入判定原因'),
+                        content: TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(
+                            hintText: '例如：技術優勢、犯規過多等',
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('取消'),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              final reason = controller.text.trim().isNotEmpty
+                                  ? controller.text.trim()
+                                  : '手動判定';
+                              Navigator.pop(context);
+                              Navigator.pop(context, _WinnerResult('red', reason));
+                            },
+                            child: const Text('確認'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('紅方勝'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final controller = TextEditingController();
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('輸入判定原因'),
+                        content: TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(
+                            hintText: '例如：技術優勢、犯規過多等',
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('取消'),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              final reason = controller.text.trim().isNotEmpty
+                                  ? controller.text.trim()
+                                  : '手動判定';
+                              Navigator.pop(context);
+                              Navigator.pop(context, _WinnerResult('blue', reason));
+                            },
+                            child: const Text('確認'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('藍方勝'),
+                ),
+              ],
             ),
           ],
         ),
-      );
-  
-      if (!mounted) return;
-  
-      if (useScores == true) {
-        // 依分數判定
-        String winner;
-        String reason = '依分數判定';
-        if (redTotal > blueTotal) {
-          winner = 'red';
-        } else if (blueTotal > redTotal) {
-          winner = 'blue';
-        } else {
-          // 平分時需要選擇勝方
-          final result = await _showManualWinnerSelection('平分，請選擇勝方');
-          if (result == null) return;
-          winner = result.winner;
-          reason = result.reason;
-        }
-        _updateMatchResult(winner, reason);
-      } else {
-        // 手動選擇勝方
-        final result = await _showManualWinnerSelection('請選擇勝方');
-        if (result != null) {
-          _updateMatchResult(result.winner, result.reason);
-        }
-      }
-    }
-
-    Future<_WinnerResult?> _showManualWinnerSelection(String title) async {
-      String? reason;
-      final winner = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text('紅方：${widget.match.redPlayer}'),
-                tileColor: Colors.red.withAlpha(51),
-                onTap: () => Navigator.pop(context, 'red'),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                title: Text('藍方：${widget.match.bluePlayer}'),
-                tileColor: Colors.blue.withAlpha(51),
-                onTap: () => Navigator.pop(context, 'blue'),
-              ),
-            ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
           ),
-        ),
-      );
+        ],
+      ),
+    );
+  }
   
-      if (winner != null && mounted) {
-        // 輸入判定原因
-        final textController = TextEditingController();
-        reason = await showDialog<String>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('請輸入判定原因'),
-            content: TextField(
-              controller: textController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: '例：技術優勢、違規判負等',
-              ),
-              onSubmitted: (value) => Navigator.pop(context, value),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, textController.text),
-                child: const Text('確認'),
-              ),
-            ],
+  void _endMatch(String winner, String reason) async {
+    try {
+      setState(() {
+        _isMatchEnded = true;
+      });
+      
+      // 更新比賽狀態
+      await _firestore.collection('matches').doc(widget.match.id).update({
+        'basic_info.status': 'completed',
+        'basic_info.winner': winner,
+        'basic_info.winReason': reason,
+        'timestamps.endTime': FieldValue.serverTimestamp(),
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('比賽已結束，${winner == 'red' ? '紅方' : '藍方'}勝出'),
+            backgroundColor: winner == 'red' ? Colors.red : Colors.blue,
           ),
         );
-        textController.dispose();
       }
-  
-      if (winner != null && reason != null) {
-        return _WinnerResult(winner, reason);
-      }
-      return null;
-    }
-
-    Future<void> _updateMatchResult(String winner, String reason) async {
-      try {
-        await _firestore.collection('matches').doc(widget.match.id).update({
-          'basic_info.winner': winner,
-          'basic_info.winReason': reason,
-          'basic_info.status': 'completed',
-          'timestamps.completedAt': FieldValue.serverTimestamp(),
-        });
-  
-        if (mounted) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('更新比賽結果失敗：$e')),
-          );
-        }
+    } catch (e) {
+      print('結束比賽時發生錯誤：$e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('結束比賽時發生錯誤：$e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
-  }
-
-  class _WinnerResult {
-    final String winner;
-    final String reason;
-  
-    _WinnerResult(this.winner, this.reason);
-  }
-
-  Widget _buildScoreBoard(BuildContext context, int redTotal, int blueTotal) {
-      // 獲取屏幕尺寸
-      final screenWidth = MediaQuery.of(context).size.width;
-      // 計算適合的字體大小，根據屏幕寬度調整
-      final scoreFontSize = screenWidth * 0.18; // 屏幕寬度的18%
-      final dividerHeight = scoreFontSize * 1.2; // 分隔線高度與字體大小成比例
-      
-      return Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withAlpha(77), // 0.3 * 255 ≈ 77
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  const Text('紅方得分', style: TextStyle(color: Colors.red)),
-                  const SizedBox(height: 8),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '$redTotal',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: scoreFontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              height: dividerHeight,
-              width: 2,
-              color: Colors.grey.shade400,
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  const Text('藍方得分', style: TextStyle(color: Colors.blue)),
-                  const SizedBox(height: 8),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '$blueTotal',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: scoreFontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-class BodyPainter extends CustomPainter {
-  final Color color;
-
-  BodyPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // Draw head - 使用相對尺寸繪製
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.33, 0, size.width * 0.33, size.height * 0.17),
-      paint,
-    );
-    
-    // Draw body - 使用相對尺寸繪製
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.27, size.height * 0.17, size.width * 0.46, size.height * 0.33),
-      paint,
-    );
-    
-    // Draw arms - 使用相對尺寸繪製
-    canvas.drawRect(
-      Rect.fromLTWH(0, size.height * 0.17, size.width * 0.27, size.height * 0.33),
-      paint,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.73, size.height * 0.17, size.width * 0.27, size.height * 0.33),
-      paint,
-    );
-    
-    // Draw legs - 使用相對尺寸繪製
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.27, size.height * 0.5, size.width * 0.23, size.height * 0.5),
-      paint,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.5, size.height * 0.5, size.width * 0.23, size.height * 0.5),
-      paint,
-    );
-  }
-  
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
   }
 }
