@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>體育聯盟管理系統</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- 自定義樣式 -->
+  <link rel="stylesheet" href="styles/main.css">
+
+  <script>
+    // 初始化Firebase配置
+    const firebaseConfig = {
+      projectId: "sports-league-app-d25e2",
+      databaseURL: "https://sports-league-app-d25e2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      apiKey: "AIzaSyDlphPjw9Ivsl6Uo9h33Y10T-2LwoIRxpQ",
+      authDomain: "sports-league-app-d25e2.firebaseapp.com",
+      storageBucket: "sports-league-app-d25e2.appspot.com",
+      messagingSenderId: "757686243952",
+      appId: "1:757686243952:web:fe291194a5e7b463a3dab5"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- 側邊導航欄 -->
+      <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+        <div class="position-sticky pt-3">
+          <div class="text-center mb-4">
+            <h5 class="text-white">體育聯盟管理系統</h5>
+          </div>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" href="#" id="dashboard-link">
+                <i class="bi bi-speedometer2 me-2"></i>儀表板
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="users-link">
+                <i class="bi bi-people me-2"></i>用戶管理
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="roles-link">
+                <i class="bi bi-person-badge me-2"></i>角色權限
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="settings-link">
+                <i class="bi bi-gear me-2"></i>系統設置
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white-50">
+          <div class="text-center">
+            <button id="logout-btn" class="btn btn-outline-light btn-sm">登出</button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- 主要內容區域 -->
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <!-- 登入表單 -->
+        <div id="login-container" class="d-flex justify-content-center align-items-center vh-100">
+          <div class="card shadow-lg" style="width: 24rem;">
+            <div class="card-header bg-primary text-white text-center">
+              <h4>管理員登入</h4>
+            </div>
+            <div class="card-body p-4">
+              <div class="mb-3">
+                <label for="email" class="form-label">電子郵件</label>
+                <input type="email" class="form-control" id="email" placeholder="請輸入電子郵件">
+              </div>
+              <div class="mb-3">
+                <label for="password" class="form-label">密碼</label>
+                <input type="password" class="form-control" id="password" placeholder="請輸入密碼">
+              </div>
+              <div class="d-grid gap-2">
+                <button id="login-btn" class="btn btn-primary">使用電子郵件登入</button>
+              </div>
+              <div class="d-grid gap-2 mt-3">
+                <button id="google-login-btn" class="btn btn-danger">
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" height="18" class="me-2">
+                  使用Google帳號登入
+                </button>
+              </div>
+              <div id="login-error" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 儀表板 -->
+        <div id="dashboard-container" class="container mt-4 d-none">
+          <div class="row mb-4">
+            <div class="col">
+              <h2>系統儀表板</h2>
+              <p class="text-muted">歡迎使用體育聯盟管理系統</p>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-4">
+              <div class="card bg-primary text-white">
+                <div class="card-body">
+                  <h5 class="card-title">用戶總數</h5>
+                  <h2 id="total-users">0</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-4">
+              <div class="card bg-success text-white">
+                <div class="card-body">
+                  <h5 class="card-title">管理員數量</h5>
+                  <h2 id="admin-count">0</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-4">
+              <div class="card bg-info text-white">
+                <div class="card-body">
+                  <h5 class="card-title">裁判數量</h5>
+                  <h2 id="referee-count">0</h2>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 用戶管理 -->
+        <div id="users-container" class="container mt-4 d-none">
+          <div class="row mb-4">
+            <div class="col-md-8">
+              <h2>用戶管理</h2>
+              <p class="text-muted">管理系統用戶及其權限</p>
+            </div>
+            <div class="col-md-4 text-end">
+              <button id="add-user-btn" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>新增用戶
+              </button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>用戶ID</th>
+                      <th>暱稱</th>
+                      <th>電子郵件</th>
+                      <th>角色</th>
+                      <th>狀態</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-table-body">
+                    <!-- 用戶數據將通過JavaScript動態填充 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 角色權限管理 -->
+        <div id="roles-container" class="container mt-4 d-none">
+          <div class="row mb-4">
+            <div class="col">
+              <h2>角色權限管理</h2>
+              <p class="text-muted">設定不同角色的系統權限</p>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-4">
+              <div class="card">
+                <div class="card-header bg-primary text-white">
+                  <h5 class="mb-0">管理員 (Admin)</h5>
+                </div>
+                <div class="card-body">
+                  <p>系統最高權限，可以：</p>
+                  <ul>
+                    <li>管理所有用戶帳號</li>
+                    <li>分配用戶角色</li>
+                    <li>查看所有數據</li>
+                    <li>修改系統設置</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-4">
+              <div class="card">
+                <div class="card-header bg-success text-white">
+                  <h5 class="mb-0">裁判 (Referee)</h5>
+                </div>
+                <div class="card-body">
+                  <p>比賽裁判權限，可以：</p>
+                  <ul>
+                    <li>創建和管理比賽</li>
+                    <li>記錄比賽分數</li>
+                    <li>查看比賽數據</li>
+                    <li>管理參賽選手</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-4">
+              <div class="card">
+                <div class="card-header bg-info text-white">
+                  <h5 class="mb-0">觀眾 (Viewer)</h5>
+                </div>
+                <div class="card-body">
+                  <p>基本查看權限，可以：</p>
+                  <ul>
+                    <li>查看公開比賽信息</li>
+                    <li>查看比賽結果</li>
+                    <li>查看選手信息</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 新增/編輯用戶模態框 -->
+  <div class="modal fade" id="user-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="user-modal-title">新增用戶</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="user-form">
+            <input type="hidden" id="user-id">
+            <div class="mb-3">
+              <label for="user-email" class="form-label">電子郵件</label>
+              <input type="email" class="form-control" id="user-email" required>
+            </div>
+            <div class="mb-3">
+              <label for="user-nickname" class="form-label">暱稱</label>
+              <input type="text" class="form-control" id="user-nickname" required>
+            </div>
+            <div class="mb-3">
+              <label for="user-role" class="form-label">角色</label>
+              <select class="form-select" id="user-role" required>
+                <option value="admin">管理員 (Admin)</option>
+                <option value="referee">裁判 (Referee)</option>
+                <option value="viewer">觀眾 (Viewer)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="user-status" class="form-label">狀態</label>
+              <select class="form-select" id="user-status" required>
+                <option value="active">啟用</option>
+                <option value="inactive">停用</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" id="save-user-btn">儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- 自定義腳本 -->
+  <script src="scripts/auth.js"></script>
+  <script src="scripts/users.js"></script>
+  <script src="scripts/dashboard.js"></script>
+  <script src="scripts/setup-admin.js"></script>
+  <script src="scripts/main.js"></script>
+</body>
+</html>

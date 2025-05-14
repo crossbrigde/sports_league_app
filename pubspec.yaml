@@ -1,7 +1,7 @@
 name: sports_league_app
 description: A new Flutter project.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.0.2+3
+publish_to: 'none' # 移除這行可發佈到 pub.dev
+version: 1.3.0+4
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -9,17 +9,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^2.24.2
-  cloud_firestore: ^4.13.6
-  firebase_database: ^10.3.8
+
+  # Firebase 套件（與 Flutter 3.19 相容）
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.3
+  cloud_firestore: ^5.6.7
+  firebase_database: ^11.3.5
+  google_sign_in: ^6.3.0
+
+  # 其他常用套件
   cupertino_icons: ^1.0.2
   uuid: ^4.2.1
-  intl: ^0.18.1
+  intl: ^0.20.2
+  js: ^0.7.2 # 如果你是 Flutter Web 使用者需要操作 JS，保留它
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true

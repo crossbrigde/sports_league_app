@@ -43,7 +43,7 @@ class AllOngoingMatchesPage extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.all(8),
                 child: ListTile(
-                  title: Text('${match.name} - 場次 ${match.matchNumber}'),
+                  title: Text('場次 ${match.matchNumber}'),
                   subtitle: Text('${match.redPlayer} vs ${match.bluePlayer}'),
                   trailing: const Icon(Icons.sports_kabaddi),
                   onTap: () {

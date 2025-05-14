@@ -10,13 +10,8 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('武術競賽記錄'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
+    return Center(
+      child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             _buildMainButton(
@@ -76,8 +71,7 @@ class HomePage extends StatelessWidget {
             ),
             // 移除重複的按鈕
           ],
-        ),
-      ),
+        )
     );
   }
 

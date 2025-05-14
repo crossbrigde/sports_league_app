@@ -252,9 +252,25 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '進行中的賽程',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '進行中的賽程',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _showEndTournamentDialog(context);
+                        },
+                        icon: const Icon(Icons.stop_circle_outlined),
+                        label: const Text('結束賽程'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   FutureBuilder<List<Tournament>>(
@@ -325,5 +341,102 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
     }
 
     return info.join(' • ');
+  }
+  
+  // 顯示結束賽程的對話框
+  void _showEndTournamentDialog(BuildContext context) async {
+    final tournaments = await _tournamentService.getActiveTournaments();
+    
+    if (tournaments.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('目前沒有進行中的賽程')),
+        );
+      }
+      return;
+    }
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('選擇要結束的賽程'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: tournaments.length,
+            itemBuilder: (context, index) {
+              final tournament = tournaments[index];
+              return ListTile(
+                title: Text(tournament.name),
+                subtitle: Text(_buildTournamentInfo(tournament)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showConfirmEndTournamentDialog(context, tournament);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // 顯示確認結束賽程的對話框
+  void _showConfirmEndTournamentDialog(BuildContext context, Tournament tournament) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('確認結束賽程'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('確定要結束「${tournament.name}」賽程嗎？'),
+            const SizedBox(height: 16),
+            const Text('• 所有比賽將視為結束'),
+            const Text('• 將無法再新增比賽至此賽程'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                Navigator.pop(context);
+                await _tournamentService.updateTournamentStatus(tournament.id, 'ended');
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已結束「${tournament.name}」賽程')),
+                  );
+                  // 重新整理頁面
+                  setState(() {});
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('結束賽程失敗：$e')),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('結束賽程'),
+          ),
+        ],
+      ),
+    );
   }
 }

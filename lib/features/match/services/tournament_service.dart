@@ -3,6 +3,22 @@ import '../models/tournament.dart';
 
 class TournamentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // 更新賽程狀態
+  Future<void> updateTournamentStatus(String tournamentId, String status) async {
+    try {
+      print('正在更新賽程狀態：$tournamentId 到 $status');
+      
+      await _firestore.collection('tournaments').doc(tournamentId).update({
+        'status': status,
+      });
+      
+      print('賽程狀態更新成功！');
+    } catch (e) {
+      print('更新賽程狀態時發生錯誤：$e');
+      throw '更新賽程狀態失敗：$e';
+    }
+  }
 
   Future<void> saveTournament(Tournament tournament) async {
     try {

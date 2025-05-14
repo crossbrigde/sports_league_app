@@ -107,7 +107,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.tournament.name} - ${widget.match.name}'),
+        title: Text('${widget.match.name}'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -265,6 +265,11 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     // 清空Realtime Database中的臨時得分
     _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
     
+    // 獲取屏幕寬度，計算固定對話框寬度
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 設置固定寬度為屏幕寬度的85%，但不超過500
+    final dialogWidth = (screenWidth * 0.85).clamp(0.0, 500.0);
+    
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -273,7 +278,13 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (context, animation, secondaryAnimation) {
         return StatefulBuilder(
-          builder: (context, setState) => Scaffold(
+          builder: (context, setState) => Dialog(
+            // 設置對話框固定寬度
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: (screenWidth - dialogWidth) / 2,
+              vertical: 24.0,
+            ),
+            child: Scaffold(
             appBar: AppBar(
               title: const Text('判定得分'),
               leading: IconButton(
@@ -288,9 +299,13 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
                 },
               ),
               actions: [
-                TextButton(
+                MaterialButton(
                   onPressed: () => _confirmJudgment(context),
-                  child: const Text('確認判定', style: TextStyle(color: Colors.white)),
+                  textColor: Colors.black,
+                  color: Colors.grey.shade300,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  
+                  child: Text('確認判定', style: TextStyle(color: Colors.black)),
                 ),
               ],
             ),
@@ -298,7 +313,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
               builder: (context, constraints) {
                 // 計算可用高度
                 final availableHeight = constraints.maxHeight;
-                // 計算縮放比例，限制在0.5到1.0之間
+                // 使用固定寬度計算縮放比例
                 final scale = (availableHeight / 700).clamp(0.5, 1.0);
                 
                 return SingleChildScrollView(
@@ -327,6 +342,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
               },
             ),
           ),
+        ),
         );
       },
     );
@@ -339,9 +355,9 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     final totalPoints = displayPoints.values.fold(0, (sum, points) => sum + points);
     
     // 獲取屏幕尺寸
-    final screenWidth = MediaQuery.of(context).size.width;
-    // 在全螢幕模式下，人形寬度可以稍微大一些
-    final bodyWidth = screenWidth * 0.4; // 人形寬度為屏幕寬度的40%
+    // 使用固定寬度計算人形大小，不再依賴當前屏幕寬度
+    // 對話框已有固定寬度，這裡設置固定的人形寬度
+    final bodyWidth = 140.0; // 固定人形寬度
     final bodyHeight = bodyWidth * 2; // 人形高度為寬度的2倍，保持比例
     
     return Column(

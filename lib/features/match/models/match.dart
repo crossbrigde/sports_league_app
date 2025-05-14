@@ -128,6 +128,8 @@ class Match {
       'bluePlayer': bluePlayer,
       'refereeNumber': refereeNumber,
       'status': status,
+      'winner': winner,
+      'winReason': winReason,
     },
     'scores': {
       'redScores': redScores,
