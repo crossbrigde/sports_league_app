@@ -265,10 +265,15 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     // 清空Realtime Database中的臨時得分
     _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
     
-    // 獲取屏幕寬度，計算固定對話框寬度
-    final screenWidth = MediaQuery.of(context).size.width;
-    // 設置固定寬度為屏幕寬度的85%，但不超過500
+    // 獲取屏幕尺寸
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
+    // 設置對話框寬度為屏幕寬度的85%，但不超過500
     final dialogWidth = (screenWidth * 0.85).clamp(0.0, 500.0);
+    // 設置對話框高度為屏幕高度的75%，確保不會太高，減少溢出可能性
+    final dialogHeight = (screenHeight * 0.75).clamp(0.0, 650.0);
     
     showGeneralDialog(
       context: context,
@@ -279,70 +284,85 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
       pageBuilder: (context, animation, secondaryAnimation) {
         return StatefulBuilder(
           builder: (context, setState) => Dialog(
-            // 設置對話框固定寬度
+            // 設置對話框固定尺寸
             insetPadding: EdgeInsets.symmetric(
               horizontal: (screenWidth - dialogWidth) / 2,
-              vertical: 24.0,
+              vertical: (screenHeight - dialogHeight) / 2,
             ),
-            child: Scaffold(
-            appBar: AppBar(
-              title: const Text('判定得分'),
-              leading: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  // 取消時也清空臨時得分
-                  tempRedPoints.clear();
-                  tempBluePoints.clear();
-                  // 清空Realtime Database中的臨時得分
-                  _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
-                  Navigator.pop(context);
-                },
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: dialogWidth,
+                maxHeight: dialogHeight,
               ),
-              actions: [
-                MaterialButton(
-                  onPressed: () => _confirmJudgment(context),
-                  textColor: Colors.black,
-                  color: Colors.grey.shade300,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  
-                  child: Text('確認判定', style: TextStyle(color: Colors.black)),
+              child: Scaffold(
+                appBar: AppBar(
+                  title: const Text('判定得分'),
+                  leading: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      // 取消時也清空臨時得分
+                      tempRedPoints.clear();
+                      tempBluePoints.clear();
+                      // 清空Realtime Database中的臨時得分
+                      _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  actions: [
+                    MaterialButton(
+                      onPressed: () => _confirmJudgment(context),
+                      textColor: Colors.black,
+                      color: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: const Text('確認判定', style: TextStyle(color: Colors.black)),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            body: LayoutBuilder(
-              builder: (context, constraints) {
-                // 計算可用高度
-                final availableHeight = constraints.maxHeight;
-                // 使用固定寬度計算縮放比例
-                final scale = (availableHeight / 700).clamp(0.5, 1.0);
-                
-                return SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Transform.scale(
-                          scale: scale,
-                          child: Row(
+                body: SafeArea(
+                  // 使用SafeArea確保內容不會被系統UI遮擋
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // 計算可用高度
+                      final availableHeight = constraints.maxHeight;
+                      // 根據可用高度計算縮放比例，降低最小縮放比例以適應更小的屏幕
+                      final scale = (availableHeight / 600).clamp(0.3, 0.9);
+                      
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(), // 確保始終可滾動
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0), // 減少內邊距
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: _buildBodyMap('red', setState, context),
+                              Transform.scale(
+                                scale: scale,
+                                alignment: Alignment.topCenter,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: _buildBodyMap('red', setState, context),
+                                    ),
+                                    const SizedBox(width: 8), // 減少間距
+                                    Expanded(
+                                      child: _buildBodyMap('blue', setState, context),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildBodyMap('blue', setState, context),
-                              ),
+                              // 添加底部間距，確保內容完全可見
+                              const SizedBox(height: 16),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
-        ),
         );
       },
     );
@@ -354,28 +374,28 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     final displayPoints = player == 'red' ? tempRedPoints : tempBluePoints;
     final totalPoints = displayPoints.values.fold(0, (sum, points) => sum + points);
     
-    // 獲取屏幕尺寸
-    // 使用固定寬度計算人形大小，不再依賴當前屏幕寬度
-    // 對話框已有固定寬度，這裡設置固定的人形寬度
-    final bodyWidth = 140.0; // 固定人形寬度
-    final bodyHeight = bodyWidth * 2; // 人形高度為寬度的2倍，保持比例
+    // 使用更小的固定寬度計算人形大小，減少溢出可能性
+    final bodyWidth = 150.0; // 放大人形寬度從120增加到150
+    final bodyHeight = bodyWidth * 1.7; // 保持人形高度比例為1.7
     
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           player == 'red' ? '紅方' : '藍方',
-          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18), // 增加字體大小
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6), // 適當增加間距
         SizedBox(
           width: bodyWidth,
-          height: bodyHeight * 1.25,
+          height: bodyHeight * 1.1, // 保持整體高度比例為1.1
           child: Stack(
+            clipBehavior: Clip.none, // 允許子元素超出Stack邊界
+            fit: StackFit.loose, // 使用loose適應策略
             children: [
               CustomPaint(
                 size: Size(bodyWidth, bodyHeight),
-                painter: BodyPainter(color: color.withAlpha(51)), // 0.2 * 255 ≈ 51
+                painter: BodyPainter(color: color.withAlpha(51)),
               ),
               _buildTouchableArea('head', '頭部', Rect.fromLTWH(bodyWidth * 0.33, 0, bodyWidth * 0.33, bodyHeight * 0.17), points, setState),
               _buildTouchableArea('body', '軀幹', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.17, bodyWidth * 0.46, bodyHeight * 0.33), points, setState),
@@ -383,18 +403,29 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
               _buildTouchableArea('rightArm', '右手', Rect.fromLTWH(bodyWidth * 0.73, bodyHeight * 0.17, bodyWidth * 0.27, bodyHeight * 0.33), points, setState),
               _buildTouchableArea('leftLeg', '左腳', Rect.fromLTWH(bodyWidth * 0.27, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
               _buildTouchableArea('rightLeg', '右腳', Rect.fromLTWH(bodyWidth * 0.5, bodyHeight * 0.5, bodyWidth * 0.23, bodyHeight * 0.5), points, setState),
-              // 調整區域位置，稍微上移
-              _buildAdjustmentArea('adjustment', '調整', Rect.fromLTWH(bodyWidth * 0.35, bodyHeight * 1.0, bodyWidth * 0.3, bodyHeight * 0.08), points, setState),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        // 將調整區域移到人形圖下方，並增加其尺寸
+        const SizedBox(height: 10), // 增加與人形圖的間距
+        SizedBox(
+          width: bodyWidth * 1.2, // 增加寬度與人形圖匹配
+          height: 45, // 增加高度，使其更容易點擊
+          child: _buildAdjustmentArea(
+            'adjustment', 
+            '±2 調整', 
+            Rect.fromLTWH(0, 0, bodyWidth * 1.2, 45), 
+            points, 
+            setState
+          ),
+        ),
+        const SizedBox(height: 8), // 增加與總分的間距
         if (totalPoints != 0)
           Text(
             totalPoints > 0 ? '+$totalPoints' : '$totalPoints',
             style: TextStyle(
               color: color,
-              fontSize: 48,  // 調整為更合適的大小
+              fontSize: 42,  // 增加字體大小以匹配放大後的人形圖
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -405,79 +436,82 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
   // 新增調整分數區域的方法
   Widget _buildAdjustmentArea(String part, String label, Rect rect, Map<String, int> points, StateSetter setState) {
     final score = points[part] ?? 0;
-    return Positioned(
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            // 在 -2, -1, 0, +1, +2 之間循環
-            if (score >= 2) {
-              points[part] = -2; // 從+2變成-2
-            } else {
-              points[part] = score + 1; // 正常遞增
-            }
-            
-            // 更新即時資料庫中的臨時得分
-            _realtimeDb.child('temp_scores').child(widget.match.id).update({
-              'red_temp': tempRedPoints,
-              'blue_temp': tempBluePoints,
-              'last_updated': ServerValue.timestamp,
-            });
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          // 在 -2, -1, 0, +1, +2 之間循環
+          if (score >= 2) {
+            points[part] = -2; // 從+2變成-2
+          } else {
+            points[part] = score + 1; // 正常遞增
+          }
+          
+          // 更新即時資料庫中的臨時得分
+          _realtimeDb.child('temp_scores').child(widget.match.id).update({
+            'red_temp': tempRedPoints,
+            'blue_temp': tempBluePoints,
+            'last_updated': ServerValue.timestamp,
           });
-        },
-        // 長按減分
-        onLongPress: () {
-          setState(() {
-            // 在 -2, -1, 0, +1, +2 之間循環（反向）
-            if (score <= -2) {
-              points[part] = 2; // 從-2變成+2
-            } else {
-              points[part] = score - 1; // 正常遞減
-            }
-            
-            // 更新即時資料庫中的臨時得分
-            _realtimeDb.child('temp_scores').child(widget.match.id).update({
-              'red_temp': tempRedPoints,
-              'blue_temp': tempBluePoints,
-              'last_updated': ServerValue.timestamp,
-            });
+        });
+      },
+      // 長按減分
+      onLongPress: () {
+        setState(() {
+          // 在 -2, -1, 0, +1, +2 之間循環（反向）
+          if (score <= -2) {
+            points[part] = 2; // 從-2變成+2
+          } else {
+            points[part] = score - 1; // 正常遞減
+          }
+          
+          // 更新即時資料庫中的臨時得分
+          _realtimeDb.child('temp_scores').child(widget.match.id).update({
+            'red_temp': tempRedPoints,
+            'blue_temp': tempBluePoints,
+            'last_updated': ServerValue.timestamp,
           });
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Colors.black26,
-              width: 1,
-            ),
-            color: Colors.grey.withOpacity(0.2), // 調整區域背景色
+        });
+      },
+      child: Container(
+        width: rect.width,
+        height: rect.height,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: Colors.black54,
+            width: 1.5,
           ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
+          color: Colors.grey.withOpacity(0.3), // 增加背景色不透明度
+          borderRadius: BorderRadius.circular(12), // 使用較小的圓角
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+                fontSize: 18, // 增大字體大小
+              ),
+            ),
+            const SizedBox(width: 8), // 添加間距
+            if (score != 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: score > 0 ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  score > 0 ? '+$score' : '$score',
                   style: TextStyle(
-                    color: Colors.black87,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 20, // 增大字體大小
+                    color: score > 0 ? Colors.green : Colors.red,
                   ),
                 ),
-                if (score != 0)
-                  Text(
-                    score > 0 ? '+$score' : '$score',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: score > 0 ? Colors.green : Colors.red,
-                    ),
-                  ),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -511,20 +545,34 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
           ),
           child: Stack(
             children: [
-              // 顯示得分
+              // 只在右手區域添加浮水印
+              if (part == 'rightArm')
+                Center(
+                  child: Text(
+                    'R',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: rect.width * 0.5, // 根據區域寬度調整字體大小
+                      color: Colors.black38, // 比背景深一點的顏色
+                    ),
+                  ),
+                ),
+              // 分數顯示
               Center(
                 child: score > 0 ? FittedBox(
-                  fit: BoxFit.contain,
-                  child: Text(
-                    '+$score',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                  fit: BoxFit.scaleDown, // 使用scaleDown確保文字不會溢出
+                  child: Padding(
+                    padding: const EdgeInsets.all(1.0), // 添加小間距
+                    child: Text(
+                      '+$score',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18, // 減小字體大小
+                      ),
                     ),
                   ),
                 ) : null,
               ),
-              // 移除頭部區域顯示「掉棍」文字
             ],
           ),
         ),

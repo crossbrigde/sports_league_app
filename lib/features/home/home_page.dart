@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../match/create_match_page.dart';
 // 移除不存在的導入
 import '../match/all_ongoing_matches_page.dart';
-import '../match/select_match_page.dart';
+import '../match/match_selection_page.dart';
 import '../match/match_history_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -36,7 +36,7 @@ class HomePage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const SelectMatchPage(),
+                    builder: (context) => MatchSelectionPage(),
                   ),
                 );
               },

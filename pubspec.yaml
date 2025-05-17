@@ -1,7 +1,7 @@
 name: sports_league_app
 description: A new Flutter project.
 publish_to: 'none' # 移除這行可發佈到 pub.dev
-version: 1.3.0+4
+version: 1.4.0+5
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
