@@ -24,7 +24,7 @@ function registerEventListeners() {
   document.getElementById('dashboard-link').addEventListener('click', showDashboard);
   document.getElementById('users-link').addEventListener('click', showUsers);
   document.getElementById('roles-link').addEventListener('click', showRoles);
-  document.getElementById('settings-link').addEventListener('click', showSettings);
+  document.getElementById('data-link').addEventListener('click', showDataManagement);
   
   // 用戶管理按鈕
   document.getElementById('add-user-btn').addEventListener('click', showAddUserModal);
@@ -94,6 +94,7 @@ function showDashboard() {
   document.getElementById('dashboard-container').classList.remove('d-none');
   document.getElementById('users-container').classList.add('d-none');
   document.getElementById('roles-container').classList.add('d-none');
+  document.getElementById('data-container').classList.add('d-none');
   
   // 載入儀表板數據
   window.dashboardModule.loadDashboardData();
@@ -105,6 +106,7 @@ function showUsers() {
   document.getElementById('dashboard-container').classList.add('d-none');
   document.getElementById('users-container').classList.remove('d-none');
   document.getElementById('roles-container').classList.add('d-none');
+  document.getElementById('data-container').classList.add('d-none');
   
   // 載入用戶數據
   window.usersModule.loadUsers();
@@ -116,12 +118,19 @@ function showRoles() {
   document.getElementById('dashboard-container').classList.add('d-none');
   document.getElementById('users-container').classList.add('d-none');
   document.getElementById('roles-container').classList.remove('d-none');
+  document.getElementById('data-container').classList.add('d-none');
 }
 
-// 顯示系統設置
-function showSettings() {
-  setActiveNavItem('settings-link');
-  // 暫未實現設置頁面
+// 顯示數據管理
+function showDataManagement() {
+  setActiveNavItem('data-link');
+  document.getElementById('dashboard-container').classList.add('d-none');
+  document.getElementById('users-container').classList.add('d-none');
+  document.getElementById('roles-container').classList.add('d-none');
+  document.getElementById('data-container').classList.remove('d-none');
+  
+  // 初始化數據管理頁面
+  initDataManagement();
 }
 
 // 設置當前活動的導航項
@@ -190,4 +199,5 @@ function saveUser() {
 window.showDashboard = showDashboard;
 window.showUsers = showUsers;
 window.showRoles = showRoles;
+window.showDataManagement = showDataManagement;
 window.showEditUserModal = showEditUserModal;

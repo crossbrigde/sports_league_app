@@ -8,7 +8,7 @@
     "description": "A new Flutter project.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
-    "version": "1.3.0",
+    "version": "1.4.3",
     "icons": [
         {
             "src": "icons/Icon-192.png",

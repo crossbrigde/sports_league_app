@@ -32,9 +32,14 @@ class Match {
   // 判定记录
   final List<Map<String, dynamic>> judgments;
   
-  // Add these fields with proper initialization
+  // 比賽結果
   final String? winner;
   final String? winReason;
+  
+  // 單淘汰賽相關
+  final int? round;           // 比賽輪次
+  final String? nextMatchId;  // 下一場比賽的ID
+  final String? slotInNext;   // 在下一場比賽中的位置（redPlayer或bluePlayer）
   
   Match({
     required this.id,
@@ -57,8 +62,11 @@ class Match {
     this.lastUpdated,
     this.completedAt,
     this.judgments = const [],
-    this.winner,  // 添加這個參數
-    this.winReason,  // 添加這個參數
+    this.winner,
+    this.winReason,
+    this.round,
+    this.nextMatchId,
+    this.slotInNext,
   });
   
   // 在 fromFirestore 方法中添加 judgments 解析
@@ -113,8 +121,11 @@ class Match {
           ? (timestamps['completedAt'] as Timestamp).toDate() 
           : null,
       judgments: judgments,
-      winner: basicInfo['winner'],  // 添加這行
-      winReason: basicInfo['winReason'],  // 添加這行
+      winner: basicInfo['winner'],
+      winReason: basicInfo['winReason'],
+      round: basicInfo['round'] != null ? (basicInfo['round'] as num).toInt() : null,
+      nextMatchId: basicInfo['nextMatchId'],
+      slotInNext: basicInfo['slotInNext'],
     );
   }
 
@@ -130,6 +141,9 @@ class Match {
       'status': status,
       'winner': winner,
       'winReason': winReason,
+      'round': round,
+      'nextMatchId': nextMatchId,
+      'slotInNext': slotInNext,
     },
     'scores': {
       'redScores': redScores,
@@ -171,8 +185,11 @@ class Match {
     DateTime? startedAt,
     DateTime? lastUpdated,
     DateTime? completedAt,
-    String? winner,  // 添加這行
-    String? winReason,  // 添加這行
+    String? winner,
+    String? winReason,
+    int? round,
+    String? nextMatchId,
+    String? slotInNext,
   }) => Match(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -194,7 +211,10 @@ class Match {
     startedAt: startedAt ?? this.startedAt,
     lastUpdated: lastUpdated ?? this.lastUpdated,
     completedAt: completedAt ?? this.completedAt,
-    winner: winner ?? this.winner,  // 添加這行
-    winReason: winReason ?? this.winReason,  // 添加這行
+    winner: winner ?? this.winner,
+    winReason: winReason ?? this.winReason,
+    round: round ?? this.round,
+    nextMatchId: nextMatchId ?? this.nextMatchId,
+    slotInNext: slotInNext ?? this.slotInNext,
   );
 }

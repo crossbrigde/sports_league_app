@@ -3,11 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Tournament {
   final String id;
   final String name;
-  final String type;
+  final String type; // 'regular', 'single_elimination', 'double_elimination', 'round_robin'
   final DateTime createdAt;
   final int? targetPoints;  // 添加這個屬性，使用可空類型
   final int? matchMinutes;  // 添加這個屬性，使用可空類型
-  final String status;      // 添加這個屬性
+  final String status;      // 'setup', 'ongoing', 'finished'
+  final int? numPlayers;    // 參賽人數
+  final List<Map<String, dynamic>>? participants; // 參賽者信息
+  final Map<String, dynamic>? matches; // 賽程結構數據
 
   Tournament({
     required this.id,
@@ -16,8 +19,12 @@ class Tournament {
     required this.createdAt,
     this.targetPoints,      // 可選參數
     this.matchMinutes,      // 可選參數
-    this.status = 'active', // 設置默認值
+    this.status = 'setup',  // 設置默認值
+    this.numPlayers,        // 參賽人數
+    this.participants,      // 參賽者信息
+    this.matches,           // 賽程結構數據
   });
+
   
   // 添加 fromFirestore 方法
   factory Tournament.fromFirestore(DocumentSnapshot doc) {
@@ -36,7 +43,16 @@ class Tournament {
       matchMinutes: data['matchMinutes'] != null 
           ? (data['matchMinutes'] as num).toInt() 
           : null,
-      status: data['status'] ?? 'active',
+      status: data['status'] ?? 'setup',
+      numPlayers: data['numPlayers'] != null 
+          ? (data['numPlayers'] as num).toInt() 
+          : null,
+      participants: data['participants'] != null 
+          ? List<Map<String, dynamic>>.from(data['participants']) 
+          : null,
+      matches: data['matches'] != null 
+          ? Map<String, dynamic>.from(data['matches']) 
+          : null,
     );
   }
   
@@ -49,6 +65,9 @@ class Tournament {
       if (targetPoints != null) 'targetPoints': targetPoints,
       if (matchMinutes != null) 'matchMinutes': matchMinutes,
       'status': status,
+      if (numPlayers != null) 'numPlayers': numPlayers,
+      if (participants != null) 'participants': participants,
+      if (matches != null) 'matches': matches,
     };
   }
 }

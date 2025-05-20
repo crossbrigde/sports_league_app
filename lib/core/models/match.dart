@@ -15,6 +15,11 @@ class Match {
   final Map<String, String>? setResults;  // 新增
   final int? redSetsWon;  // 新增
   final int? blueSetsWon;  // 新增
+  final String? winner;  // 比賽勝者 (red/blue)
+  final String? winReason;  // 勝利原因
+  final int? round;  // 比賽輪次
+  final String? nextMatchId;  // 下一場比賽ID
+  final String? slotInNext;  // 在下一場比賽中的位置 (redPlayer/bluePlayer)
 
   final String tournamentId;  // Add this field
   final String tournamentName;  // Add this field
@@ -36,6 +41,11 @@ class Match {
     this.setResults,  // 新增
     this.redSetsWon,  // 新增
     this.blueSetsWon,  // 新增
+    this.winner,  // 比賽勝者
+    this.winReason,  // 勝利原因
+    this.round,  // 比賽輪次
+    this.nextMatchId,  // 下一場比賽ID
+    this.slotInNext,  // 在下一場比賽中的位置
   })  : redScores = redScores ?? {},
         blueScores = blueScores ?? {};
 
@@ -87,6 +97,11 @@ class Match {
             : null,
         redSetsWon: data['redSetsWon'],
         blueSetsWon: data['blueSetsWon'],
+        winner: data['winner'],
+        winReason: data['winReason'],
+        round: data['round'],
+        nextMatchId: data['nextMatchId'],
+        slotInNext: data['slotInNext'],
       );
     }
 
@@ -107,6 +122,11 @@ class Match {
       'setResults': setResults,
       'redSetsWon': redSetsWon,
       'blueSetsWon': blueSetsWon,
+      'winner': winner,
+      'winReason': winReason,
+      'round': round,
+      'nextMatchId': nextMatchId,
+      'slotInNext': slotInNext,
     };
   }
 

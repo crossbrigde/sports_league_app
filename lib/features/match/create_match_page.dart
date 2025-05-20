@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sports_league_app/features/match/models/tournament.dart';
 import 'package:uuid/uuid.dart';
 import 'services/tournament_service.dart';
+import '../../features/tournament/services/tournament_bracket_service.dart';
+import '../../features/tournament/tournament_detail_page.dart';
 
 class CreateMatchPage extends StatefulWidget {
   const CreateMatchPage({super.key});
@@ -12,15 +14,15 @@ class CreateMatchPage extends StatefulWidget {
 
 class _CreateMatchPageState extends State<CreateMatchPage> {
   final _tournamentService = TournamentService();
+  final _bracketService = TournamentBracketService();
   final _formKey = GlobalKey<FormState>();
   String tournamentName = '';
   bool isPointTimeSystem = false;
   bool isTimeSystem = false;
   int targetPoints = 0;
   int matchMinutes = 0;
-  bool isBestOfOne = false;
-  bool isBestOfThree = false;
-  bool isBestOfFive = false;
+  bool isSingleElimination = false;
+  int numPlayers = 8; // 預設參賽人數
 
   @override
   Widget build(BuildContext context) {
@@ -147,46 +149,51 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                         ),
                       ),
                     const SizedBox(height: 20),
-                    const Text('比賽場次', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    // 比賽場次選項已移除
+
+                    const SizedBox(height: 20),
+                    const Text('淘汰賽制', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     CheckboxListTile(
-                      title: const Text('一場決勝'),
-                      value: isBestOfOne,
+                      title: const Text('單淘汰賽'),
+                      value: isSingleElimination,
                       onChanged: (bool? value) {
                         setState(() {
-                          isBestOfOne = value ?? false;
-                          if (isBestOfOne) {
-                            isBestOfThree = false;
-                            isBestOfFive = false;
-                          }
+                          isSingleElimination = value ?? false;
+                          // 移除對未定義變量的引用
                         });
                       },
                     ),
-                    CheckboxListTile(
-                      title: const Text('三戰兩勝'),
-                      value: isBestOfThree,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          isBestOfThree = value ?? false;
-                          if (isBestOfThree) {
-                            isBestOfOne = false;
-                            isBestOfFive = false;
-                          }
-                        });
-                      },
-                    ),
-                    CheckboxListTile(
-                      title: const Text('五戰三勝'),
-                      value: isBestOfFive,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          isBestOfFive = value ?? false;
-                          if (isBestOfFive) {
-                            isBestOfOne = false;
-                            isBestOfThree = false;
-                          }
-                        });
-                      },
-                    ),
+                    if (isSingleElimination) ...[                      
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('參賽人數', style: TextStyle(fontSize: 16)),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Slider(
+                                    value: numPlayers.toDouble(),
+                                    min: 4,
+                                    max: 32,
+                                    divisions: 7,
+                                    label: numPlayers.toString(),
+                                    onChanged: (double value) {
+                                      setState(() {
+                                        numPlayers = value.toInt();
+                                      });
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 50, child: Text('$numPlayers 人', textAlign: TextAlign.center)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     Center(
                       child: ElevatedButton(
@@ -201,33 +208,61 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                                 type = 'point_time';
                               } else if (isTimeSystem) {
                                 type = 'time';
-                              } else if (isBestOfThree) {
-                                type = 'best_of_three';
-                              } else if (isBestOfFive) {
-                                type = 'best_of_five';
+                              } else if (isSingleElimination) {
+                                type = 'single_elimination';
                               } else {
                                 type = 'best_of_one';
                               }
                               
-                              final tournament = Tournament(
-                                id: const Uuid().v4(),
-                                name: tournamentName,
-                                type: type,
-                                targetPoints: isPointTimeSystem ? targetPoints : null,
-                                matchMinutes: (isTimeSystem || isPointTimeSystem) ? matchMinutes : null,
-                                createdAt: DateTime.now(),
-                                status: 'active',  // 添加狀態字段
-                              );
-
-                              print('準備保存賽程：${tournament.id}');
-                              await _tournamentService.saveTournament(tournament);
-                              print('賽程創建成功！');
-                              
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('賽程已創建')),
+                              // 處理單淘汰賽
+                              if (isSingleElimination) {
+                                print('創建單淘汰賽，參賽人數：$numPlayers');
+                                final tournament = await _bracketService.createSingleEliminationTournament(
+                                  name: tournamentName,
+                                  numPlayers: numPlayers,
+                                  targetPoints: isPointTimeSystem ? targetPoints : null,
+                                  matchMinutes: (isTimeSystem || isPointTimeSystem) ? matchMinutes : null,
                                 );
-                                Navigator.pop(context);
+                                
+                                print('單淘汰賽創建成功！');
+                                
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('單淘汰賽已創建')),
+                                  );
+                                  // 導航到賽程詳情頁面
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => TournamentDetailPage(
+                                        tournamentId: tournament.id,
+                                        tournamentName: tournament.name,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                // 處理一般賽程
+                                final tournament = Tournament(
+                                  id: const Uuid().v4(),
+                                  name: tournamentName,
+                                  type: type,
+                                  targetPoints: isPointTimeSystem ? targetPoints : null,
+                                  matchMinutes: (isTimeSystem || isPointTimeSystem) ? matchMinutes : null,
+                                  createdAt: DateTime.now(),
+                                  status: 'active',  // 添加狀態字段
+                                );
+
+                                print('準備保存賽程：${tournament.id}');
+                                await _tournamentService.saveTournament(tournament);
+                                print('賽程創建成功！');
+                                
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('賽程已創建')),
+                                  );
+                                  Navigator.pop(context);
+                                }
                               }
                             } catch (e) {
                               print('創建賽程時發生錯誤：$e');
