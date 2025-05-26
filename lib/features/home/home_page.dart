@@ -3,6 +3,7 @@ import '../match/create_match_page.dart';
 import '../match/all_ongoing_matches_page.dart';
 import '../match/match_selection_page.dart';
 import '../match/match_history_page.dart';
+import '../tournament/tournament_list_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -22,6 +23,20 @@ class HomePage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const CreateMatchPage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            _buildMainButton(
+              context,
+              '賽程管理',
+              Icons.list_alt,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TournamentListPage(),
                   ),
                 );
               },

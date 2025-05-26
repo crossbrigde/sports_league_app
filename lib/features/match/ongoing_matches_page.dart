@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/match_service.dart';
 import 'match_scoring_page.dart';
 import 'models/tournament.dart';
-import 'models/match.dart';  // Add this import instead
+import '../../models/match.dart';
 
 class OngoingMatchesPage extends StatelessWidget {
   final String tournamentId;

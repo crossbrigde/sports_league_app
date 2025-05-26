@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'models/match.dart';
+import '../../models/match.dart';
 import 'models/tournament.dart';
 import 'match_detail_page.dart';
 import 'match_statistics_page.dart';

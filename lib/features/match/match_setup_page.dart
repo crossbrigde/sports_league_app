@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 // 移除未使用的導入
 import 'models/tournament.dart';
-import 'models/match.dart';
+import '../../models/match.dart';
 import 'match_scoring_page.dart';
 import '../../core/services/match_service.dart';
 

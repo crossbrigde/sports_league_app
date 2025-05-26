@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/match_service.dart';
-import 'models/match.dart';
+import '../../models/match.dart';
 import 'models/tournament.dart';
 import 'match_scoring_page.dart';
 

@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../features/match/models/match.dart';
+import '../../models/match.dart';
 import '../../features/match/models/tournament.dart';
 
 class MatchService {

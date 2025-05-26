@@ -79,7 +79,7 @@ class TournamentService {
         'targetPoints': tournament.targetPoints,
         'matchMinutes': tournament.matchMinutes,
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'active',
+        'status': 'ongoing',
       });
       
       print('賽程保存成功！');
@@ -99,16 +99,7 @@ class TournamentService {
           .get();
 
       final tournaments = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return Tournament(
-          id: data['id'],
-          name: data['name'],
-          type: data['type'],
-          targetPoints: data['targetPoints'],
-          matchMinutes: data['matchMinutes'],
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          status: data['status'] ?? 'active',
-        );
+        return Tournament.fromFirestore(doc);
       }).toList();
 
       print('成功獲取 ${tournaments.length} 個賽程');
@@ -130,16 +121,7 @@ class TournamentService {
           .get();
 
       final tournaments = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return Tournament(
-          id: data['id'],
-          name: data['name'],
-          type: data['type'],
-          targetPoints: data['targetPoints'],
-          matchMinutes: data['matchMinutes'],
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          status: data['status'] ?? 'active',
-        );
+        return Tournament.fromFirestore(doc);
       }).toList();
 
       print('成功獲取 ${tournaments.length} 個進行中的賽程');

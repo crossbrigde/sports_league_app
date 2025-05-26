@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'models/match.dart';
+import '../../models/match.dart';
 
 class MatchDetailPage extends StatelessWidget {
   final Match match;

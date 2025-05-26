@@ -32,8 +32,8 @@ class Tournament {
     
     return Tournament(
       id: doc.id,
-      name: data['name'] ?? '',
-      type: data['type'] ?? '',
+      name: (data['name'] as String?) ?? '未命名賽程',
+      type: (data['type'] as String?) ?? 'regular',
       createdAt: data['createdAt'] != null 
           ? (data['createdAt'] as Timestamp).toDate() 
           : DateTime.now(),
@@ -43,7 +43,7 @@ class Tournament {
       matchMinutes: data['matchMinutes'] != null 
           ? (data['matchMinutes'] as num).toInt() 
           : null,
-      status: data['status'] ?? 'setup',
+      status: (data['status'] as String?) ?? 'setup',
       numPlayers: data['numPlayers'] != null 
           ? (data['numPlayers'] as num).toInt() 
           : null,
@@ -58,6 +58,11 @@ class Tournament {
   
   // 添加 toFirestore 方法以便將來使用
   Map<String, dynamic> toFirestore() {
+    // 添加詳細日誌以檢查序列化過程
+    print('Tournament.toFirestore() - 序列化賽程: $id, $name');
+    print('Tournament.toFirestore() - 檢查關鍵字段: targetPoints=$targetPoints, matchMinutes=$matchMinutes');
+    print('Tournament.toFirestore() - 檢查 matches 字段: ${matches != null ? 'matches 不為 null' : 'matches 為 null'}');
+    
     return {
       'name': name,
       'type': type,

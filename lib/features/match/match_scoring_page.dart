@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'models/match.dart';
+import '../../models/match.dart';
 import 'models/tournament.dart';
+import '../tournament/services/tournament_bracket_service.dart';
 // 移除這行未使用的導入
 // import 'all_ongoing_matches_page.dart'; 
 
@@ -83,6 +84,7 @@ class MatchScoringPage extends StatefulWidget {
 class _MatchScoringPageState extends State<MatchScoringPage> {
   late final FirebaseFirestore _firestore;
   late final DatabaseReference _realtimeDb;
+  late final TournamentBracketService _bracketService;
   late Map<String, int> redScores;
   late Map<String, int> blueScores;
   bool _isMatchEnded = false;
@@ -95,6 +97,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     super.initState();
     _firestore = FirebaseFirestore.instance;
     _realtimeDb = FirebaseDatabase.instance.ref();
+    _bracketService = TournamentBracketService();
     redScores = Map<String, int>.from(widget.match.redScores);
     blueScores = Map<String, int>.from(widget.match.blueScores);
     _isMatchEnded = widget.match.status == 'completed';
@@ -986,76 +989,41 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
   // 處理單淘汰賽的自動晉級邏輯
   Future<void> _handleTournamentAdvancement(String winner) async {
     try {
-      // 獲取勝者ID
-      final String winnerId = winner == 'red' ? widget.match.redPlayer : widget.match.bluePlayer;
-      
-      // 查詢下一場比賽
-      final nextMatchSnapshot = await _firestore.collection('matches')
-          .where('basic_info.matchNumber', isEqualTo: widget.match.nextMatchId)
-          .where('basic_info.tournamentId', isEqualTo: widget.match.tournamentId)
-          .get();
-      
-      if (nextMatchSnapshot.docs.isNotEmpty) {
-        final nextMatchDoc = nextMatchSnapshot.docs.first;
-        final nextMatchData = nextMatchDoc.data();
-        
-        // 更新下一場比賽的選手
-        final Map<String, dynamic> updates = {
-          'basic_info.${widget.match.slotInNext}': winnerId,
-        };
-        
-        // 檢查下一場比賽是否雙方都已就緒
-        final basicInfo = nextMatchData['basic_info'] as Map<String, dynamic>? ?? {};
-        if ((widget.match.slotInNext == 'redPlayer' && basicInfo['bluePlayer'] != null && basicInfo['bluePlayer'] != '') ||
-            (widget.match.slotInNext == 'bluePlayer' && basicInfo['redPlayer'] != null && basicInfo['redPlayer'] != '')) {
-          updates['basic_info.status'] = 'ongoing';
-        }
-        
-        await nextMatchDoc.reference.update(updates);
-        print('選手 $winnerId 已晉級到下一場比賽');
-      }
-      
       // 更新賽程中的比賽狀態
-      await _firestore.collection('tournaments').doc(widget.match.tournamentId).get().then((doc) {
-        if (doc.exists) {
-          final tournamentData = doc.data() as Map<String, dynamic>;
-          final matches = tournamentData['matches'] as Map<String, dynamic>?;
+      final doc = await _firestore.collection('tournaments').doc(widget.match.tournamentId).get();
+      if (doc.exists) {
+        final tournamentData = doc.data() as Map<String, dynamic>;
+        final matches = tournamentData['matches'] as Map<String, dynamic>?;
+        
+        if (matches != null) {
+          // 找到當前比賽
+          String? currentMatchId;
+          matches.forEach((id, matchData) {
+            if (matchData['matchNumber'] == widget.match.matchNumber) {
+              currentMatchId = id;
+            }
+          });
           
-          if (matches != null) {
-            // 找到當前比賽
-            String? currentMatchId;
-            matches.forEach((id, matchData) {
-              if (matchData['matchNumber'] == widget.match.matchNumber) {
-                currentMatchId = id;
-              }
+          if (currentMatchId != null) {
+            // 更新當前比賽狀態
+            matches[currentMatchId!]['status'] = 'completed';
+            matches[currentMatchId!]['winner'] = winner == 'red' ? widget.match.redPlayer : widget.match.bluePlayer;
+            
+            // 更新賽程
+            await _firestore.collection('tournaments').doc(widget.match.tournamentId).update({
+              'matches': matches,
             });
             
-            if (currentMatchId != null) {
-              // 更新當前比賽狀態
-              matches[currentMatchId!]['status'] = 'completed';
-              matches[currentMatchId!]['winner'] = winner == 'red' ? widget.match.redPlayer : widget.match.bluePlayer;
-              
-              // 更新下一場比賽的選手
-              final nextMatchId = matches[currentMatchId!]['nextMatchId'];
-              final slotInNext = matches[currentMatchId!]['slotInNext'];
-              
-              if (nextMatchId != null && slotInNext != null) {
-                matches[nextMatchId][slotInNext] = winner == 'red' ? widget.match.redPlayer : widget.match.bluePlayer;
-                
-                // 檢查下一場比賽是否雙方都已就緒
-                if (matches[nextMatchId]['redPlayer'] != null && matches[nextMatchId]['bluePlayer'] != null) {
-                  matches[nextMatchId]['status'] = 'ongoing';
-                }
-              }
-              
-              // 更新賽程
-              _firestore.collection('tournaments').doc(widget.match.tournamentId).update({
-                'matches': matches,
-              });
-            }
+            // 使用TournamentBracketService處理自動晉級
+            final updatedMatch = widget.match.copyWith(
+              status: 'completed',
+              winner: winner == 'red' ? 'red' : 'blue',
+            );
+            await _bracketService.handleMatchCompletion(updatedMatch);
+            print('已調用自動晉級邏輯');
           }
         }
-      });
+      }
     } catch (e) {
       print('處理晉級邏輯時發生錯誤：$e');
     }
