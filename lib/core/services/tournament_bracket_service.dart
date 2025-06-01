@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
-import '../../../models/match.dart';
-import '../../match/models/tournament.dart';
+import '../models/match.dart';
+import '../models/tournament.dart';
 
 class TournamentBracketService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -20,15 +20,20 @@ class TournamentBracketService {
     required int numPlayers,
     int? targetPoints,
     int? matchMinutes,
+    List<String>? playerNames,
+    bool randomPairing = false,
   }) async {
     // 創建賽程ID
     final tournamentId = _uuid.v4();
     
-    // 創建參賽者列表
+    // 創建參賽者列表，使用自定義名稱或預設名稱
     final participants = List.generate(numPlayers, (index) {
+      final playerName = (playerNames != null && index < playerNames.length) 
+          ? playerNames[index] 
+          : 'PLAYER${index + 1}';
       return {
-        'id': 'PLAYER${index + 1}',
-        'displayName': 'PLAYER${index + 1}',
+        'id': playerName,
+        'displayName': playerName,
         'userId': null,
       };
     });
@@ -47,6 +52,7 @@ class TournamentBracketService {
     
     debugPrint('創建單淘汰賽，參賽人數：$numPlayers，輪空數量：$byeCount');
     debugPrint('調整後的參賽人數：$adjustedNumPlayers，第一輪比賽數量：$firstRoundMatches');
+    debugPrint('隨機配對：$randomPairing');
     
     // 第一步：建立完整的比賽樹結構
     final matchStructure = _buildCompleteMatchTree(totalMatches, adjustedNumPlayers);
@@ -54,12 +60,14 @@ class TournamentBracketService {
     // 第二步：安排輪空位置（從兩端開始）
     final byePositions = _calculateByePositions(byeCount, firstRoundMatches);
     
-    // 第三步：分配選手到第一輪比賽
+    // 第三步：分配選手到第一輪比賽（支持隨機配對）
     final matchesWithPlayers = _assignPlayersToMatches(
       matchStructure, 
       numPlayers, 
       byePositions, 
-      firstRoundMatches
+      firstRoundMatches,
+      playerNames: playerNames,
+      randomPairing: randomPairing,
     );
     
     // 第四步：創建所有 Match 物件
@@ -250,8 +258,10 @@ class TournamentBracketService {
     Map<String, Map<String, dynamic>> matchStructure,
     int numPlayers,
     List<int> byePositions,
-    int firstRoundMatches,
-  ) {
+    int firstRoundMatches, {
+    List<String>? playerNames,
+    bool randomPairing = false,
+  }) {
     final matches = Map<String, Map<String, dynamic>>.from(matchStructure);
     int playerIndex = 0;
     
@@ -431,10 +441,26 @@ class TournamentBracketService {
         final nextMatchData = docSnapshot.data();
         final basicInfo = nextMatchData?['basic_info'] as Map<String, dynamic>? ?? {};
         
-        if ((match.slotInNext == 'redPlayer' && basicInfo['bluePlayer'] != null && basicInfo['bluePlayer'] != '') ||
-            (match.slotInNext == 'bluePlayer' && basicInfo['redPlayer'] != null && basicInfo['redPlayer'] != '')) {
+        // 獲取當前的紅藍方選手信息
+        String currentRedPlayer = basicInfo['redPlayer'] ?? '';
+        String currentBluePlayer = basicInfo['bluePlayer'] ?? '';
+        
+        // 模擬更新後的狀態
+        if (match.slotInNext == 'redPlayer') {
+          currentRedPlayer = winnerId;
+        } else if (match.slotInNext == 'bluePlayer') {
+          currentBluePlayer = winnerId;
+        }
+        
+        debugPrint('下一場比賽選手狀態: red=$currentRedPlayer, blue=$currentBluePlayer');
+        
+        // 檢查雙方是否都已就绪（都不為空且不為"待定"）
+        if (currentRedPlayer.isNotEmpty && currentRedPlayer != '待定' && 
+            currentBluePlayer.isNotEmpty && currentBluePlayer != '待定') {
           updates['basic_info.status'] = 'ongoing';
           debugPrint('下一場比賽雙方已就绪，更新狀態為ongoing');
+        } else {
+          debugPrint('下一場比賽尚未就绪: red=$currentRedPlayer, blue=$currentBluePlayer');
         }
         
         await docSnapshot.reference.update(updates);

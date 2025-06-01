@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../match/models/tournament.dart';
-import '../match/services/tournament_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/models/tournament.dart';
+import '../../core/services/tournament_service.dart';
 import 'tournament_detail_page.dart';
 
 class TournamentListPage extends StatefulWidget {
@@ -27,9 +28,15 @@ class _TournamentListPageState extends State<TournamentListPage> {
     });
 
     try {
-      final tournaments = await _tournamentService.getAllTournaments();
+      final allTournaments = await _tournamentService.getAllTournaments();
+      // 只顯示單淘汰賽且未完成的賽程
+      final filteredTournaments = allTournaments
+          .where((tournament) => 
+              tournament.type == 'single_elimination' && 
+              tournament.status != 'completed')
+          .toList();
       setState(() {
-        _tournaments = tournaments;
+        _tournaments = filteredTournaments;
         _isLoading = false;
       });
     } catch (e) {
@@ -51,6 +58,11 @@ class _TournamentListPageState extends State<TournamentListPage> {
         title: const Text('賽程管理'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.stop_circle),
+            onPressed: _showEndTournamentDialog,
+            tooltip: '結束賽程',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadTournaments,
@@ -194,5 +206,188 @@ class _TournamentListPageState extends State<TournamentListPage> {
 
   String _formatDateTime(DateTime dateTime) {
     return '${dateTime.year}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  // 顯示結束賽程對話框
+  Future<void> _showEndTournamentDialog() async {
+    try {
+      // 搜尋ongoing或active狀態的賽程
+      final ongoingTournaments = await _getOngoingTournaments();
+      
+      if (ongoingTournaments.isEmpty) {
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('目前沒有進行中的單淘汰賽賽程')),
+           );
+         }
+         return;
+       }
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('選擇要結束的單淘汰賽賽程'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: ongoingTournaments.length,
+                itemBuilder: (context, index) {
+                  final tournament = ongoingTournaments[index];
+                  return ListTile(
+                    title: Text(tournament.name),
+                    subtitle: Text('狀態: ${_getStatusText(tournament.status)}'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showTournamentStatsDialog(tournament);
+                    },
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('載入賽程失敗: $e')),
+        );
+      }
+    }
+  }
+
+  // 獲取進行中的單淘汰賽賽程
+  Future<List<Tournament>> _getOngoingTournaments() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('tournaments')
+        .where('status', whereIn: ['ongoing', 'active'])
+        .where('type', isEqualTo: 'single_elimination')
+        .get();
+    
+    return snapshot.docs
+        .map((doc) => Tournament.fromFirestore(doc))
+        .toList();
+  }
+
+  // 顯示賽程統計對話框
+  Future<void> _showTournamentStatsDialog(Tournament tournament) async {
+    try {
+      // 獲取該賽程的比賽統計
+      final stats = await _getTournamentStats(tournament.id);
+      
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('結束賽程：${tournament.name}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('賽程名稱：${tournament.name}'),
+                const SizedBox(height: 8),
+                Text('總比賽數量：${stats['totalMatches']}'),
+                Text('已完成比賽：${stats['completedMatches']}'),
+                Text('進行中比賽：${stats['ongoingMatches']}'),
+                Text('未開始比賽：${stats['pendingMatches']}'),
+                const SizedBox(height: 16),
+                const Text(
+                  '確定要結束此賽程嗎？結束後狀態將變更為「已完成」。',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _endTournament(tournament);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('確定結束'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('載入賽程統計失敗: $e')),
+        );
+      }
+    }
+  }
+
+  // 獲取賽程統計數據
+  Future<Map<String, int>> _getTournamentStats(String tournamentId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('matches')
+        .where('basic_info.tournamentId', isEqualTo: tournamentId)
+        .get();
+    
+    int totalMatches = snapshot.docs.length;
+    int completedMatches = 0;
+    int ongoingMatches = 0;
+    int pendingMatches = 0;
+    
+    for (final doc in snapshot.docs) {
+      final status = doc.data()['basic_info']['status'] as String? ?? 'pending';
+      switch (status) {
+        case 'completed':
+          completedMatches++;
+          break;
+        case 'ongoing':
+          ongoingMatches++;
+          break;
+        default:
+          pendingMatches++;
+          break;
+      }
+    }
+    
+    return {
+      'totalMatches': totalMatches,
+      'completedMatches': completedMatches,
+      'ongoingMatches': ongoingMatches,
+      'pendingMatches': pendingMatches,
+    };
+  }
+
+  // 結束賽程
+  Future<void> _endTournament(Tournament tournament) async {
+    try {
+      await _tournamentService.updateTournamentStatus(tournament.id, 'completed');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('賽程「${tournament.name}」已成功結束')),
+        );
+        
+        // 重新載入賽程列表
+        _loadTournaments();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('結束賽程失敗: $e')),
+        );
+      }
+    }
   }
 }

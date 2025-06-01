@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'features/home/home_page.dart';
-import 'features/auth/services/auth_service.dart';
+import 'core/services/auth_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/profile_screen.dart';
-import 'features/auth/models/user_model.dart';
+import 'core/models/user_model.dart';
 
 // 添加 Firebase 配置
 Future<void> main() async {

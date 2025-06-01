@@ -131,4 +131,54 @@ class TournamentService {
       throw '獲取進行中賽程列表失敗：$e';
     }
   }
+  
+  // 同步比賽數據到賽程集合
+  Future<void> syncMatchToTournament(String tournamentId, String matchNumber, Map<String, dynamic> matchData) async {
+    try {
+      print('正在同步比賽數據到賽程：tournamentId=$tournamentId, matchNumber=$matchNumber');
+      
+      // 獲取賽程文檔
+      final tournamentDoc = await _firestore.collection('tournaments').doc(tournamentId).get();
+      
+      if (!tournamentDoc.exists) {
+        print('找不到賽程文檔：$tournamentId');
+        return;
+      }
+      
+      final tournamentData = tournamentDoc.data() as Map<String, dynamic>;
+      final matches = Map<String, dynamic>.from(tournamentData['matches'] ?? {});
+      
+      // 找到對應的比賽並更新
+      String? targetMatchId;
+      matches.forEach((matchId, match) {
+        if (match['matchNumber'] == matchNumber) {
+          targetMatchId = matchId;
+        }
+      });
+      
+      if (targetMatchId != null) {
+        // 更新比賽數據
+        matches[targetMatchId!] = {
+          ...matches[targetMatchId!],
+          'bluePlayer': matchData['bluePlayer'],
+          'redPlayer': matchData['redPlayer'],
+          'status': matchData['status'],
+          'winner': matchData['winner'],
+          'winReason': matchData['winReason'],
+        };
+        
+        // 更新賽程文檔
+        await _firestore.collection('tournaments').doc(tournamentId).update({
+          'matches': matches,
+        });
+        
+        print('成功同步比賽數據到賽程');
+      } else {
+        print('在賽程中找不到對應的比賽：matchNumber=$matchNumber');
+      }
+    } catch (e) {
+      print('同步比賽數據時發生錯誤：$e');
+      throw '同步比賽數據失敗：$e';
+    }
+  }
 }

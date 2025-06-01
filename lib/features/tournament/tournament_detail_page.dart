@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../match/match_setup_page.dart';
 import '../match/ongoing_matches_page.dart';
-import '../match/models/tournament.dart';
-import 'services/tournament_bracket_service.dart';
+import '../../core/models/tournament.dart';
+import '../../core/services/tournament_bracket_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TournamentDetailPage extends StatefulWidget {
@@ -117,74 +117,153 @@ class _TournamentDetailPageState extends State<TournamentDetailPage> {
   }
 
   // 顯示創建單淘汰賽對話框
-  void _showCreateTournamentDialog() {
+  void _showCreateSingleEliminationDialog() {
     int numPlayers = 8;
     int? targetPoints;
     int? matchMinutes;
+    List<String> playerNames = [];
+    bool randomPairing = false;
+
+    // 初始化選手名稱列表
+    void _initializePlayerNames() {
+      playerNames = List.generate(numPlayers, (index) => 'PLAYER${index + 1}');
+    }
+    _initializePlayerNames();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('創建單淘汰賽'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('請設定參賽人數和比賽規則'),
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: '參賽人數',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('創建單淘汰賽'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('請設定參賽人數和比賽規則'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: '參賽人數',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  initialValue: numPlayers.toString(),
+                  onChanged: (value) {
+                    final newNumPlayers = int.tryParse(value) ?? 8;
+                    if (newNumPlayers != numPlayers) {
+                      setState(() {
+                        numPlayers = newNumPlayers;
+                        _initializePlayerNames();
+                      });
+                    }
+                  },
                 ),
-                keyboardType: TextInputType.number,
-                initialValue: numPlayers.toString(),
-                onChanged: (value) {
-                  numPlayers = int.tryParse(value) ?? 8;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: '目標分數 (可選)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                
+                // 動態選手名稱輸入區域
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '選手名稱設定',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 200, // 限制高度，避免對話框過大
+                        child: ListView.builder(
+                          itemCount: numPlayers,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: TextFormField(
+                                decoration: InputDecoration(
+                                  labelText: '選手 ${index + 1}',
+                                  border: const OutlineInputBorder(),
+                                ),
+                                initialValue: playerNames[index],
+                                onChanged: (value) {
+                                  playerNames[index] = value.trim().isEmpty 
+                                      ? 'PLAYER${index + 1}' 
+                                      : value.trim();
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  targetPoints = int.tryParse(value);
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: '比賽時間 (分鐘, 可選)',
-                  border: OutlineInputBorder(),
+                
+                // 隨機配對選項
+                Row(
+                  children: [
+                    Checkbox(
+                      value: randomPairing,
+                      onChanged: (value) {
+                        setState(() {
+                          randomPairing = value ?? false;
+                        });
+                      },
+                    ),
+                    const Expanded(
+                      child: Text('隨機配對（在不違反輪空原則下隨機分配比賽場次）'),
+                    ),
+                  ],
                 ),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  matchMinutes = int.tryParse(value);
-                },
-              ),
-            ],
+                const SizedBox(height: 16),
+                
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: '目標分數 (可選)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    targetPoints = int.tryParse(value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: '比賽時間 (分鐘, 可選)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    matchMinutes = int.tryParse(value);
+                  },
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                _createSingleEliminationTournament(
+                  numPlayers: numPlayers,
+                  targetPoints: targetPoints,
+                  matchMinutes: matchMinutes,
+                  playerNames: playerNames,
+                  randomPairing: randomPairing,
+                );
+              },
+              child: const Text('創建'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              _createSingleEliminationTournament(
-                numPlayers: numPlayers,
-                targetPoints: targetPoints,
-                matchMinutes: matchMinutes,
-              );
-            },
-            child: const Text('創建'),
-          ),
-        ],
       ),
     );
   }
@@ -194,53 +273,50 @@ class _TournamentDetailPageState extends State<TournamentDetailPage> {
     required int numPlayers,
     int? targetPoints,
     int? matchMinutes,
+    List<String>? playerNames,
+    bool randomPairing = false,
   }) async {
     try {
       setState(() {
         _isLoading = true;
       });
 
-      // 添加詳細日誌以檢查參數值
       print('_createSingleEliminationTournament - 檢查參數:');
-      print('numPlayers: $numPlayers');
-      print('targetPoints: $targetPoints');
-      print('matchMinutes: $matchMinutes');
-      
-      // 確保 targetPoints 和 matchMinutes 不為 null
-      final nonNullTargetPoints = targetPoints ?? 0;
-      final nonNullMatchMinutes = matchMinutes ?? 0;
-      
-      print('處理後的參數值:');
-      print('nonNullTargetPoints: $nonNullTargetPoints');
-      print('nonNullMatchMinutes: $nonNullMatchMinutes');
+      print('- numPlayers: $numPlayers');
+      print('- targetPoints: $targetPoints');
+      print('- matchMinutes: $matchMinutes');
+      print('- playerNames: $playerNames');
+      print('- randomPairing: $randomPairing');
+      print('- tournamentName: ${_tournament?.name ?? widget.tournamentName}');
 
+      // 調用服務創建單淘汰賽（包含所有參數）
       await _bracketService.createSingleEliminationTournament(
-        name: widget.tournamentName,
+        name: _tournament?.name ?? widget.tournamentName,
         numPlayers: numPlayers,
-        targetPoints: nonNullTargetPoints,
-        matchMinutes: nonNullMatchMinutes,
+        targetPoints: targetPoints,
+        matchMinutes: matchMinutes,
+        playerNames: playerNames,
+        randomPairing: randomPairing,
       );
 
-      // 重新載入賽程
-      await _loadTournament();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('單淘汰賽創建成功！')),
-        );
-      }
-    } catch (e) {
-      print('創建單淘汰賽時發生錯誤: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('創建失敗: $e')),
-        );
-      }
-    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('單淘汰賽創建成功！')),
+        );
+        _loadTournament();
+      }
+    } catch (e) {
+      print('創建單淘汰賽時發生錯誤: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('創建失敗：$e')),
+        );
       }
     }
   }
@@ -312,7 +388,7 @@ class _TournamentDetailPageState extends State<TournamentDetailPage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _showCreateTournamentDialog,
+              onPressed: _showCreateSingleEliminationDialog,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
               ),

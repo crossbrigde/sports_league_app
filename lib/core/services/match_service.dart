@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/match.dart';
-import '../../features/match/models/tournament.dart';
+import '../models/match.dart';
+import '../models/tournament.dart';
 
 class MatchService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
