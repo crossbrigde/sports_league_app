@@ -57,8 +57,8 @@
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#" id="settings-link">
-                <i class="bi bi-gear me-2"></i>系統設置
+              <a class="nav-link" href="#" id="data-link">
+                <i class="bi bi-database me-2"></i>數據管理
               </a>
             </li>
           </ul>
@@ -230,6 +230,74 @@
             </div>
           </div>
         </div>
+        <!-- 數據管理 -->
+        <div id="data-container" class="container mt-4 d-none">
+          <div class="row mb-4">
+            <div class="col">
+              <h2>數據管理</h2>
+              <p class="text-muted">管理比賽和賽程數據</p>
+            </div>
+          </div>
+          
+          <!-- 比賽列表 -->
+          <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">比賽列表</h5>
+              <button id="add-match-btn" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-2"></i>新增比賽
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>場次</th>
+                      <th>藍方選手</th>
+                      <th>紅方選手</th>
+                      <th>狀態</th>
+                      <th>操作</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="matches-table-body">
+                    <!-- 比賽數據將通過JavaScript動態填充 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 賽程列表 -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">賽程列表</h5>
+              <button id="add-schedule-btn" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-2"></i>新增賽程
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>賽程ID</th>
+                      <th>比賽名稱</th>
+                      <th>場次</th>
+                      <th>時間</th>
+                      <th>地點</th>
+                      <th>狀態</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="schedules-table-body">
+                    <!-- 賽程數據將通過JavaScript動態填充 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   </div>
@@ -278,6 +346,197 @@
     </div>
   </div>
 
+  <!-- 新增/編輯比賽模態框 -->
+  <div class="modal fade" id="match-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="match-modal-title">新增比賽</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="match-form">
+            <input type="hidden" id="match-id">
+            <div class="mb-3">
+              <label for="match-name" class="form-label">比賽名稱</label>
+              <input type="text" class="form-control" id="match-name" required>
+            </div>
+            <div class="mb-3">
+              <label for="match-tournament" class="form-label">所屬賽程</label>
+              <select class="form-select" id="match-tournament">
+                <option value="" selected>請選擇賽程（可選）</option>
+                <!-- 賽程選項將通過JavaScript動態填充 -->
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="match-type" class="form-label">比賽類型</label>
+              <select class="form-select" id="match-type" required>
+                <option value="tournament">錦標賽</option>
+                <option value="league">聯賽</option>
+                <option value="friendly">友誼賽</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="match-start-date" class="form-label">開始日期</label>
+              <input type="date" class="form-control" id="match-start-date" required>
+            </div>
+            <div class="mb-3">
+              <label for="match-status" class="form-label">狀態</label>
+              <select class="form-select" id="match-status" required>
+                <option value="active">進行中</option>
+                <option value="completed">已結束</option>
+                <option value="upcoming">即將開始</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="match-description" class="form-label">比賽描述</label>
+              <textarea class="form-control" id="match-description" rows="3"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" id="save-match-btn">儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增/編輯賽程模態框 -->
+  <div class="modal fade" id="schedule-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="schedule-modal-title">新增賽程</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="schedule-form">
+            <input type="hidden" id="schedule-id">
+            <div class="mb-3">
+              <label for="schedule-match" class="form-label">所屬比賽</label>
+              <select class="form-select" id="schedule-match" required>
+                <!-- 比賽選項將通過JavaScript動態填充 -->
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="schedule-round" class="form-label">場次/輪次</label>
+              <input type="text" class="form-control" id="schedule-round" required>
+            </div>
+            <div class="mb-3">
+              <label for="schedule-time" class="form-label">時間</label>
+              <input type="datetime-local" class="form-control" id="schedule-time" required>
+            </div>
+            <div class="mb-3">
+              <label for="schedule-location" class="form-label">地點</label>
+              <input type="text" class="form-control" id="schedule-location" required>
+            </div>
+            <div class="mb-3">
+              <label for="schedule-status" class="form-label">狀態</label>
+              <select class="form-select" id="schedule-status" required>
+                <option value="upcoming">即將開始</option>
+                <option value="ongoing">進行中</option>
+                <option value="completed">已完成</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" id="save-schedule-btn">儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編輯比賽得分模態框 -->
+  <div class="modal fade" id="score-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">編輯比賽得分</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="score-match-id">
+          
+          <!-- 比賽信息 -->
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title" id="score-match-name">比賽名稱</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white p-2 me-2 rounded">藍方</div>
+                    <div id="score-blue-player">藍方選手</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-danger text-white p-2 me-2 rounded">紅方</div>
+                    <div id="score-red-player">紅方選手</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 得分記錄表格 -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">得分記錄</h6>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                  <thead class="table-secondary">
+                    <tr>
+                      <th width="10%">序號</th>
+                      <th width="30%">選手</th>
+                      <th width="30%">得分</th>
+                      <th width="30%">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="score-table-body">
+                    <!-- 得分記錄將通過JavaScript動態填充 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 添加新得分 -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">添加新得分</h6>
+            </div>
+            <div class="card-body">
+              <div class="row g-3 align-items-center">
+                <div class="col-md-5">
+                  <label for="new-score-player" class="form-label">選手</label>
+                  <select class="form-select" id="new-score-player">
+                    <option value="blue">藍方</option>
+                    <option value="red">紅方</option>
+                  </select>
+                </div>
+                <div class="col-md-5">
+                  <label for="new-score-points" class="form-label">得分</label>
+                  <input type="number" class="form-control" id="new-score-points" value="1" min="1" max="5">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                  <button type="button" class="btn btn-success w-100" onclick="addNewScore()">添加</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap Bundle with Popper -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Bootstrap Icons -->
@@ -287,6 +546,7 @@
   <script src="scripts/users.js"></script>
   <script src="scripts/dashboard.js"></script>
   <script src="scripts/setup-admin.js"></script>
+  <script src="scripts/data.js"></script>
   <script src="scripts/main.js"></script>
 </body>
 </html>

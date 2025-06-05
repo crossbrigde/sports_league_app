@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:sports_league_app/features/match/models/tournament.dart';
+import 'package:sports_league_app/core/models/tournament.dart';
 import 'package:uuid/uuid.dart';
-import 'services/tournament_service.dart';
+import '../../core/services/tournament_service.dart';
+import '../../core/services/tournament_bracket_service.dart';
+import '../../features/tournament/tournament_detail_page.dart';
 
 class CreateMatchPage extends StatefulWidget {
   const CreateMatchPage({super.key});
@@ -12,15 +14,15 @@ class CreateMatchPage extends StatefulWidget {
 
 class _CreateMatchPageState extends State<CreateMatchPage> {
   final _tournamentService = TournamentService();
+  final _bracketService = TournamentBracketService();
   final _formKey = GlobalKey<FormState>();
   String tournamentName = '';
   bool isPointTimeSystem = false;
   bool isTimeSystem = false;
   int targetPoints = 0;
   int matchMinutes = 0;
-  bool isBestOfOne = false;
-  bool isBestOfThree = false;
-  bool isBestOfFive = false;
+  bool isSingleElimination = false;
+  int numPlayers = 8; // 預設參賽人數
 
   @override
   Widget build(BuildContext context) {
@@ -55,187 +57,121 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    const Text('勝負制度', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    
+                    const SizedBox(height: 20),
+                    const Text('賽制選擇', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     CheckboxListTile(
-                      title: const Text('搶分計時制'),
-                      value: isPointTimeSystem,
+                      title: const Text('單淘汰賽'),
+                      value: isSingleElimination,
                       onChanged: (bool? value) {
                         setState(() {
-                          isPointTimeSystem = value ?? false;
-                          if (isPointTimeSystem) {
-                            isTimeSystem = false;
-                          }
+                          isSingleElimination = value ?? false;
                         });
                       },
                     ),
-                    if (isPointTimeSystem) ...[
+                    if (isSingleElimination) ...[  
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: TextFormField(
-                                decoration: const InputDecoration(
-                                  labelText: '搶幾分',
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return '請輸入分數';
-                                  }
-                                  return null;
-                                },
-                                onSaved: (value) {
-                                  targetPoints = int.tryParse(value ?? '') ?? 0;
-                                },
+                            const Text('參賽人數 (4-16人)'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                hintText: '請輸入4-16之間的數字',
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextFormField(
-                                decoration: const InputDecoration(
-                                  labelText: '比賽分鐘數',
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return '請輸入時間';
-                                  }
-                                  return null;
-                                },
-                                onSaved: (value) {
-                                  matchMinutes = int.tryParse(value ?? '') ?? 0;
-                                },
-                              ),
+                              initialValue: numPlayers.toString(),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return '請輸入參賽人數';
+                                }
+                                final number = int.tryParse(value);
+                                if (number == null) {
+                                  return '請輸入有效的數字';
+                                }
+                                if (number < 4 || number > 16) {
+                                  return '參賽人數必須在4到16人之間';
+                                }
+                                return null;
+                              },
+                              onSaved: (value) {
+                                numPlayers = int.tryParse(value ?? '') ?? 8;
+                              },
                             ),
                           ],
                         ),
                       ),
                     ],
-                    CheckboxListTile(
-                      title: const Text('計時制'),
-                      value: isTimeSystem,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          isTimeSystem = value ?? false;
-                          if (isTimeSystem) {
-                            isPointTimeSystem = false;
-                          }
-                        });
-                      },
-                    ),
-                    if (isTimeSystem)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: '比賽分鐘數',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return '請輸入時間';
-                            }
-                            return null;
-                          },
-                          onSaved: (value) {
-                            matchMinutes = int.tryParse(value ?? '') ?? 0;
-                          },
-                        ),
-                      ),
-                    const SizedBox(height: 20),
-                    const Text('比賽場次', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    CheckboxListTile(
-                      title: const Text('一場決勝'),
-                      value: isBestOfOne,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          isBestOfOne = value ?? false;
-                          if (isBestOfOne) {
-                            isBestOfThree = false;
-                            isBestOfFive = false;
-                          }
-                        });
-                      },
-                    ),
-                    CheckboxListTile(
-                      title: const Text('三戰兩勝'),
-                      value: isBestOfThree,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          isBestOfThree = value ?? false;
-                          if (isBestOfThree) {
-                            isBestOfOne = false;
-                            isBestOfFive = false;
-                          }
-                        });
-                      },
-                    ),
-                    CheckboxListTile(
-                      title: const Text('五戰三勝'),
-                      value: isBestOfFive,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          isBestOfFive = value ?? false;
-                          if (isBestOfFive) {
-                            isBestOfOne = false;
-                            isBestOfThree = false;
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState!.validate()) {
                             _formKey.currentState!.save();
                             
                             try {
-                              print('正在創建賽程...');
-                              String type;
-                              if (isPointTimeSystem) {
-                                type = 'point_time';
-                              } else if (isTimeSystem) {
-                                type = 'time';
-                              } else if (isBestOfThree) {
-                                type = 'best_of_three';
-                              } else if (isBestOfFive) {
-                                type = 'best_of_five';
+                              if (isSingleElimination) {
+                                // 顯示詳細的單淘汰賽設定對話框
+                                _showSingleEliminationDialog();
                               } else {
-                                type = 'best_of_one';
-                              }
-                              
-                              final tournament = Tournament(
-                                id: const Uuid().v4(),
-                                name: tournamentName,
-                                type: type,
-                                targetPoints: isPointTimeSystem ? targetPoints : null,
-                                matchMinutes: (isTimeSystem || isPointTimeSystem) ? matchMinutes : null,
-                                createdAt: DateTime.now(),
-                                status: 'active',  // 添加狀態字段
-                              );
-
-                              print('準備保存賽程：${tournament.id}');
-                              await _tournamentService.saveTournament(tournament);
-                              print('賽程創建成功！');
-                              
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('賽程已創建')),
+                                // 創建常規賽程
+                                final tournament = Tournament(
+                                  id: const Uuid().v4(),
+                                  name: tournamentName,
+                                  type: 'regular',
+                                  createdAt: DateTime.now(),
+                                  targetPoints: isPointTimeSystem ? targetPoints : null,
+                                  matchMinutes: (isPointTimeSystem || isTimeSystem) ? matchMinutes : null,
+                                  status: 'ongoing',
                                 );
-                                Navigator.pop(context);
+                                
+                                await _tournamentService.saveTournament(tournament);
+                                
+                                if (!mounted) return;
+                                
+                                // 顯示成功消息並提供選項
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('常規賽程創建成功！'),
+                                    content: Text('賽程「$tournamentName」已成功創建'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context); // 關閉對話框
+                                          Navigator.pop(context); // 返回上一頁
+                                        },
+                                        child: const Text('返回'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context); // 關閉對話框
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => TournamentDetailPage(
+                                                tournamentId: tournament.id,
+                                                tournamentName: tournament.name,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('進入賽程'),
+                                      ),
+                                    ],
+                                  ),
+                                );
                               }
                             } catch (e) {
-                              print('創建賽程時發生錯誤：$e');
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('創建賽程失敗：$e')),
-                                );
-                              }
+                              // 顯示錯誤消息
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('創建賽程失敗: $e')),
+                              );
                             }
                           }
                         },
@@ -246,65 +182,163 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                 ),
               ),
             ),
-            const Divider(height: 32),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSingleEliminationDialog() {
+    int dialogNumPlayers = numPlayers; // 直接使用 numPlayers 變量
+    List<String> playerNames = [];
+    bool randomPairing = false;
+    int? targetPoints;
+    int? matchMinutes;
+
+    void initializePlayerNames() {
+      playerNames = List.generate(dialogNumPlayers, (index) => 'PLAYER${index + 1}');
+    }
+    initializePlayerNames();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('單淘汰賽詳細設定'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '進行中的賽程',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _showEndTournamentDialog(context);
-                        },
-                        icon: const Icon(Icons.stop_circle_outlined),
-                        label: const Text('結束賽程'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
+                  const Text('請設定參賽人數和比賽規則'),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: '參賽人數',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    initialValue: dialogNumPlayers.toString(),
+                    onChanged: (value) {
+                      final newNumPlayers = int.tryParse(value) ?? 8;
+                      if (newNumPlayers != dialogNumPlayers && newNumPlayers >= 4 && newNumPlayers <= 16) {
+                        setState(() {
+                          dialogNumPlayers = newNumPlayers;
+                          initializePlayerNames();
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // 選手名稱輸入區域
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '選手名稱設定',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            itemCount: dialogNumPlayers,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: '選手 ${index + 1}',
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  initialValue: playerNames[index],
+                                  onChanged: (value) {
+                                    playerNames[index] = value.trim().isEmpty 
+                                        ? 'PLAYER${index + 1}' 
+                                        : value.trim();
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // 隨機配對選項
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: randomPairing,
+                        onChanged: (value) {
+                          setState(() {
+                            randomPairing = value ?? false;
+                          });
+                        },
+                      ),
+                      const Expanded(
+                        child: Text('隨機配對（在不違反輪空原則下隨機分配比賽場次）'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  FutureBuilder<List<Tournament>>(
-                    future: _tournamentService.getActiveTournaments(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final tournaments = snapshot.data ?? [];
-                      if (tournaments.isEmpty) {
-                        return const Center(
-                          child: Text('目前沒有進行中的賽程'),
-                        );
-                      }
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: tournaments.length,
-                        itemBuilder: (context, index) {
-                          final tournament = tournaments[index];
-                          return Card(
-                            child: ListTile(
-                              title: Text(tournament.name),
-                              subtitle: Text(_buildTournamentInfo(tournament)),
-                            ),
-                          );
-                        },
-                      );
+                  
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: '目標分數 (可選)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      targetPoints = int.tryParse(value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: '比賽時間 (分鐘, 可選)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      matchMinutes = int.tryParse(value);
                     },
                   ),
                 ],
               ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _createSingleEliminationTournament(
+                  numPlayers: dialogNumPlayers,
+                  targetPoints: targetPoints,
+                  matchMinutes: matchMinutes,
+                  playerNames: playerNames,
+                  randomPairing: randomPairing,
+                );
+              },
+              child: const Text('創建'),
             ),
           ],
         ),
@@ -312,131 +346,74 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
     );
   }
 
-  String _buildTournamentInfo(Tournament tournament) {
-    final List<String> info = [];
-    
-    switch (tournament.type) {
-      case 'point_time':
-        if (tournament.targetPoints != null) {
-          info.add('搶${tournament.targetPoints}分');
-        }
-        if (tournament.matchMinutes != null) {
-          info.add('${tournament.matchMinutes}分鐘');
-        }
-        break;
-      case 'time':
-        if (tournament.matchMinutes != null) {
-          info.add('計時${tournament.matchMinutes}分鐘');
-        }
-        break;
-      case 'best_of_one':
-        info.add('一場決勝');
-        break;
-      case 'best_of_three':
-        info.add('三戰兩勝');
-        break;
-      case 'best_of_five':
-        info.add('五戰三勝');
-        break;
-    }
+  // 創建單淘汰賽
+  Future<void> _createSingleEliminationTournament({
+    required int numPlayers,
+    int? targetPoints,
+    int? matchMinutes,
+    List<String>? playerNames,
+    bool randomPairing = false,
+  }) async {
+    try {
+      print('_createSingleEliminationTournament - 檢查參數:');
+      print('- numPlayers: $numPlayers');
+      print('- targetPoints: $targetPoints');
+      print('- matchMinutes: $matchMinutes');
+      print('- playerNames: $playerNames');
+      print('- randomPairing: $randomPairing');
+      print('- tournamentName: $tournamentName');
 
-    return info.join(' • ');
-  }
-  
-  // 顯示結束賽程的對話框
-  void _showEndTournamentDialog(BuildContext context) async {
-    final tournaments = await _tournamentService.getActiveTournaments();
-    
-    if (tournaments.isEmpty) {
+      // 調用服務創建單淘汰賽（包含所有參數）
+      final tournament = await _bracketService.createSingleEliminationTournament(
+        name: tournamentName,
+        numPlayers: numPlayers,
+        targetPoints: targetPoints,
+        matchMinutes: matchMinutes,
+        playerNames: playerNames,
+        randomPairing: randomPairing,
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('目前沒有進行中的賽程')),
+        // 顯示成功消息並提供選項
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('單淘汰賽創建成功！'),
+            content: Text('賽程「$tournamentName」已成功創建'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // 關閉對話框
+                  Navigator.pop(context); // 返回上一頁
+                },
+                child: const Text('返回'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // 關閉對話框
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TournamentDetailPage(
+                        tournamentId: tournament.id,
+                        tournamentName: tournament.name,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('進入賽程'),
+              ),
+            ],
+          ),
         );
       }
-      return;
+    } catch (e) {
+      print('創建單淘汰賽時發生錯誤: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('創建單淘汰賽失敗: $e')),
+        );
+      }
     }
-    
-    if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('選擇要結束的賽程'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: tournaments.length,
-            itemBuilder: (context, index) {
-              final tournament = tournaments[index];
-              return ListTile(
-                title: Text(tournament.name),
-                subtitle: Text(_buildTournamentInfo(tournament)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showConfirmEndTournamentDialog(context, tournament);
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  // 顯示確認結束賽程的對話框
-  void _showConfirmEndTournamentDialog(BuildContext context, Tournament tournament) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('確認結束賽程'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('確定要結束「${tournament.name}」賽程嗎？'),
-            const SizedBox(height: 16),
-            const Text('• 所有比賽將視為結束'),
-            const Text('• 將無法再新增比賽至此賽程'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                Navigator.pop(context);
-                await _tournamentService.updateTournamentStatus(tournament.id, 'ended');
-                
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('已結束「${tournament.name}」賽程')),
-                  );
-                  // 重新整理頁面
-                  setState(() {});
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('結束賽程失敗：$e')),
-                  );
-                }
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('結束賽程'),
-          ),
-        ],
-      ),
-    );
   }
 }

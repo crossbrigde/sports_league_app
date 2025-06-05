@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../features/match/models/match.dart';
-import '../../features/match/models/tournament.dart';
+import '../models/match.dart';
+import '../models/tournament.dart';
 
 class MatchService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // 公開firestore實例，供其他類訪問
+  FirebaseFirestore get firestore => _firestore;
 
   // 獲取所有未完成的比賽
   Stream<List<Match>> getUnfinishedMatches() {
@@ -200,6 +203,9 @@ class MatchService {
           'bluePlayer': match.bluePlayer,
           'refereeNumber': match.refereeNumber,
           'status': match.status,
+          // 添加單淘汰賽晉級相關字段
+          if (match.nextMatchId != null) 'nextMatchId': match.nextMatchId,
+          if (match.slotInNext != null) 'slotInNext': match.slotInNext,
         },
         'scores': {
           'redScores': match.redScores,

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'models/match.dart';
-import 'models/tournament.dart';
+import '../../core/models/match.dart';
+import '../../core/models/tournament.dart';
+import '../../core/services/tournament_bracket_service.dart';
+import '../../core/services/tournament_service.dart';
 // 移除這行未使用的導入
 // import 'all_ongoing_matches_page.dart'; 
 
@@ -83,6 +85,7 @@ class MatchScoringPage extends StatefulWidget {
 class _MatchScoringPageState extends State<MatchScoringPage> {
   late final FirebaseFirestore _firestore;
   late final DatabaseReference _realtimeDb;
+  late final TournamentBracketService _bracketService;
   late Map<String, int> redScores;
   late Map<String, int> blueScores;
   bool _isMatchEnded = false;
@@ -95,6 +98,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     super.initState();
     _firestore = FirebaseFirestore.instance;
     _realtimeDb = FirebaseDatabase.instance.ref();
+    _bracketService = TournamentBracketService();
     redScores = Map<String, int>.from(widget.match.redScores);
     blueScores = Map<String, int>.from(widget.match.blueScores);
     _isMatchEnded = widget.match.status == 'completed';
@@ -957,6 +961,27 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
         'timestamps.endTime': FieldValue.serverTimestamp(),
       });
       
+      // 同步比賽數據到賽程集合
+      if (widget.match.tournamentId.isNotEmpty) {
+        final tournamentService = TournamentService();
+        await tournamentService.syncMatchToTournament(
+          widget.match.tournamentId,
+          widget.match.matchNumber,
+          {
+            'bluePlayer': widget.match.bluePlayer,
+            'redPlayer': widget.match.redPlayer,
+            'status': 'completed',
+            'winner': winner,
+            'winReason': reason,
+          },
+        );
+      }
+      
+      // 處理單淘汰賽的自動晉級邏輯
+      if (widget.match.nextMatchId != null && widget.match.slotInNext != null) {
+        await _handleTournamentAdvancement(winner);
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -975,6 +1000,36 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
           ),
         );
       }
+    }
+  }
+  
+  // 處理單淘汰賽的自動晉級邏輯
+  Future<void> _handleTournamentAdvancement(String winner) async {
+    try {
+      print('開始處理晉級邏輯: matchId=${widget.match.id}, winner=$winner');
+      print('Match nextMatchId: ${widget.match.nextMatchId}, slotInNext: ${widget.match.slotInNext}');
+      
+      // 使用TournamentBracketService處理自動晉級
+      final updatedMatch = widget.match.copyWith(
+        status: 'completed',
+        winner: winner,
+        winReason: 'match_completed',
+      );
+      
+      print('調用handleMatchCompletion前的Match信息:');
+      print('- ID: ${updatedMatch.id}');
+      print('- nextMatchId: ${updatedMatch.nextMatchId}');
+      print('- slotInNext: ${updatedMatch.slotInNext}');
+      print('- winner: ${updatedMatch.winner}');
+      print('- redPlayer: ${updatedMatch.redPlayer}');
+      print('- bluePlayer: ${updatedMatch.bluePlayer}');
+      
+      await _bracketService.handleMatchCompletion(updatedMatch);
+      print('已成功調用自動晉級邏輯');
+      
+    } catch (e) {
+      print('處理晉級邏輯時發生錯誤：$e');
+      print('錯誤堆疊：${e.toString()}');
     }
   }
 }

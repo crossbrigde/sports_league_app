@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'models/match.dart';
-import 'models/tournament.dart';
+import '../../core/models/match.dart';
+import '../../core/models/tournament.dart';
 import 'match_detail_page.dart';
 import 'match_statistics_page.dart';
 
@@ -335,7 +335,8 @@ class _MatchHistoryPageState extends State<MatchHistoryPage> {
       }
       
       // 檢查賽程狀態，如果是已結束的賽程，在名稱後添加標記
-      final tournamentTitle = tournament.status == 'ended'
+      final isCompleted = tournament.status == 'ended' || tournament.status == 'completed';
+      final tournamentTitle = isCompleted
           ? '${tournament.name} (已結束)'
           : tournament.name;
           
@@ -347,7 +348,7 @@ class _MatchHistoryPageState extends State<MatchHistoryPage> {
                 child: Text(tournamentTitle),
               ),
               // 只有已結束的賽程才顯示統計按鈕
-              if (tournament.status == 'ended')
+              if (isCompleted)
                 IconButton(
                   icon: const Icon(Icons.bar_chart),
                   tooltip: '查看統計',

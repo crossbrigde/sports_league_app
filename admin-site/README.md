@@ -42,3 +42,4 @@ FirebaseError: Firebase: This domain is not authorized for OAuth operations for 
 4. 檢查 Firebase 專案的 API 密鑰是否啟用了必要的 Google 服務
 
 如有任何問題，請參考 [Firebase Authentication 文檔](https://firebase.google.com/docs/auth)。
+firebase deploy --only hosting:kali-admin-panel

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../match/create_match_page.dart';
-// 移除不存在的導入
 import '../match/all_ongoing_matches_page.dart';
 import '../match/match_selection_page.dart';
 import '../match/match_history_page.dart';
+import '../tournament/tournament_list_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -16,7 +16,7 @@ class HomePage extends StatelessWidget {
           children: <Widget>[
             _buildMainButton(
               context,
-              '建立賽程',
+              '賽程管理',
               Icons.add_chart,
               () {
                 Navigator.push(
@@ -30,7 +30,21 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 20),
             _buildMainButton(
               context,
-              '進行比賽',
+              '單淘賽',
+              Icons.list_alt,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TournamentListPage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            _buildMainButton(
+              context,
+              '積分賽',
               Icons.sports_martial_arts,
               () {
                 Navigator.push(
