@@ -41,6 +41,13 @@ class Match {
   final String? nextMatchId;  // 下一場比賽的ID
   final String? slotInNext;   // 在下一場比賽中的位置（redPlayer或bluePlayer）
   
+  // 雙淘汰賽相關
+  final String? loserNextMatchId; // 敗者組下一場比賽的ID
+  final String? bracket;          // 所屬組別 (winner, loser, final)
+  final bool isGrandFinal;        // 是否為總決賽
+  final bool isGrandFinalRematch; // 是否為總決賽重賽
+  final String? loserSlotInNext;  // 敗者在下一場比賽中的位置
+  
   Match({
     required this.id,
     required this.name,
@@ -67,6 +74,11 @@ class Match {
     this.round,
     this.nextMatchId,
     this.slotInNext,
+    this.loserNextMatchId,
+    this.bracket,
+    this.isGrandFinal = false,
+    this.isGrandFinalRematch = false,
+    this.loserSlotInNext,
   });
   
   // 從舊版本的數據創建Match對象的工廠方法
@@ -194,6 +206,11 @@ class Match {
       round: basicInfo['round'] != null ? (basicInfo['round'] as num).toInt() : null,
       nextMatchId: basicInfo['nextMatchId'],
       slotInNext: basicInfo['slotInNext'],
+      loserNextMatchId: basicInfo['loserNextMatchId'],
+      bracket: basicInfo['bracket'],
+      isGrandFinal: basicInfo['isGrandFinal'] ?? false,
+      isGrandFinalRematch: basicInfo['isGrandFinalRematch'] ?? false,
+      loserSlotInNext: basicInfo['loserSlotInNext'],
     );
   }
 
@@ -320,6 +337,10 @@ class Match {
       'round': round,
       'nextMatchId': nextMatchId,
       'slotInNext': slotInNext,
+      'loserNextMatchId': loserNextMatchId,
+      'bracket': bracket,
+      'isGrandFinal': isGrandFinal,
+      'loserSlotInNext': loserSlotInNext,
     },
     'scores': {
       'redScores': redScores,
@@ -375,6 +396,11 @@ class Match {
     int? round,
     String? nextMatchId,
     String? slotInNext,
+    String? loserNextMatchId, // Added
+    String? bracket,          // Added
+    bool? isGrandFinal,       // Added
+    bool? isGrandFinalRematch, // Added
+    String? loserSlotInNext,  // Added
   }) => Match(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -401,6 +427,11 @@ class Match {
     round: round ?? this.round,
     nextMatchId: nextMatchId ?? this.nextMatchId,
     slotInNext: slotInNext ?? this.slotInNext,
+    loserNextMatchId: loserNextMatchId ?? this.loserNextMatchId, // Added
+    bracket: bracket ?? this.bracket,                            // Added
+    isGrandFinal: isGrandFinal ?? this.isGrandFinal,              // Added
+    isGrandFinalRematch: isGrandFinalRematch ?? this.isGrandFinalRematch, // Added
+    loserSlotInNext: loserSlotInNext ?? this.loserSlotInNext,      // Added
   );
   
   bool get isOngoing => status == 'ongoing';

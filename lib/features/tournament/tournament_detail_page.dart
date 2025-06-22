@@ -663,6 +663,10 @@ class _TournamentDetailPageState extends State<TournamentDetailPage> {
         'basic_info.status': 'ongoing',
       });
 
+      // 檢查並處理輪空晉級
+      final tournamentBracketService = TournamentBracketService();
+      await tournamentBracketService.checkAndHandleByeAdvancement(matchId);
+
       // 重新載入賽程
       await _loadTournament();
 

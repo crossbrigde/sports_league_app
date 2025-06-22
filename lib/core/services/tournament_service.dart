@@ -132,7 +132,7 @@ class TournamentService {
     }
   }
   
-  // 同步比賽數據到賽程集合
+  // 同步比賽數據到賽程集合（增強版）
   Future<void> syncMatchToTournament(String tournamentId, String matchNumber, Map<String, dynamic> matchData) async {
     try {
       print('正在同步比賽數據到賽程：tournamentId=$tournamentId, matchNumber=$matchNumber');
@@ -157,7 +157,7 @@ class TournamentService {
       });
       
       if (targetMatchId != null) {
-        // 更新比賽數據
+        // 更新比賽數據，保持與您提供的數據結構一致
         matches[targetMatchId!] = {
           ...matches[targetMatchId!],
           'bluePlayer': matchData['bluePlayer'],
@@ -167,18 +167,119 @@ class TournamentService {
           'winReason': matchData['winReason'],
         };
         
+        // 檢查是否需要更新整體賽程狀態
+        String tournamentStatus = 'ongoing';
+        final allMatches = matches.values.toList();
+        final completedMatches = allMatches.where((m) => m['status'] == 'completed').length;
+        final ongoingMatches = allMatches.where((m) => m['status'] == 'ongoing').length;
+        
+        if (completedMatches == allMatches.length) {
+          tournamentStatus = 'completed';
+        } else if (ongoingMatches == 0 && completedMatches == 0) {
+          tournamentStatus = 'pending';
+        }
+        
         // 更新賽程文檔
         await _firestore.collection('tournaments').doc(tournamentId).update({
           'matches': matches,
+          'status': tournamentStatus,
         });
         
-        print('成功同步比賽數據到賽程');
+        print('成功同步比賽數據到賽程，賽程狀態：$tournamentStatus');
       } else {
         print('在賽程中找不到對應的比賽：matchNumber=$matchNumber');
       }
     } catch (e) {
       print('同步比賽數據時發生錯誤：$e');
       throw '同步比賽數據失敗：$e';
+    }
+  }
+  
+  // 新增：同步晉級選手到賽程
+  Future<void> syncAdvancementToTournament(String tournamentId, String nextMatchNumber, String slotInNext, String winnerId, {String? newStatus}) async {
+    try {
+      print('正在同步晉級數據到賽程：tournamentId=$tournamentId, nextMatchNumber=$nextMatchNumber, slot=$slotInNext, winner=$winnerId, newStatus=$newStatus');
+      
+      final tournamentDocRef = _firestore.collection('tournaments').doc(tournamentId);
+      final tournamentDoc = await tournamentDocRef.get();
+      
+      if (!tournamentDoc.exists) {
+        print('找不到賽程文檔：$tournamentId');
+        return;
+      }
+      
+      final tournamentData = tournamentDoc.data() as Map<String, dynamic>;
+      final matches = Map<String, dynamic>.from(tournamentData['matches'] ?? {});
+      
+      String? targetMatchId;
+      matches.forEach((matchId, match) {
+        if (match['matchNumber'] == nextMatchNumber) {
+          targetMatchId = matchId;
+        }
+      });
+      
+      if (targetMatchId != null) {
+        final matchToUpdate = Map<String, dynamic>.from(matches[targetMatchId!] ?? {});
+        matchToUpdate[slotInNext] = winnerId;
+        
+        // 如果提供了 newStatus，則更新比賽狀態
+        if (newStatus != null) {
+          matchToUpdate['status'] = newStatus;
+        }
+        
+        matches[targetMatchId!] = matchToUpdate;
+        
+        await tournamentDocRef.update({'matches': matches});
+        print('成功同步晉級數據到賽程');
+      } else {
+        print('在賽程中找不到對應的下一場比賽：matchNumber=$nextMatchNumber');
+      }
+    } catch (e) {
+      print('同步晉級數據時發生錯誤：$e');
+      throw '同步晉級數據失敗：$e';
+    }
+  }
+  
+  // 刪除賽程及其相關比賽
+  
+  // 根據比賽ID同步比賽數據到賽程
+  Future<void> syncMatchDataToTournament(String matchId) async {
+    try {
+      print('正在根據比賽ID同步數據到賽程：matchId=$matchId');
+      
+      // 獲取比賽文檔
+      final matchDoc = await _firestore.collection('matches').doc(matchId).get();
+      
+      if (!matchDoc.exists) {
+        print('找不到比賽文檔：$matchId');
+        return;
+      }
+      
+      final matchData = matchDoc.data() as Map<String, dynamic>;
+      final tournamentId = matchData['tournamentId'];
+      final matchNumber = matchData['matchNumber'];
+      
+      if (tournamentId == null || matchNumber == null) {
+        print('比賽缺少必要的賽程ID或比賽編號：$matchId');
+        return;
+      }
+      
+      // 提取需要同步的比賽數據
+      final syncData = {
+        'bluePlayer': matchData['bluePlayer'],
+        'redPlayer': matchData['redPlayer'],
+        'status': matchData['status'],
+        'winner': matchData['winner'],
+        'winReason': matchData['winReason'],
+      };
+      
+      // 調用現有方法同步到賽程
+      await syncMatchToTournament(tournamentId, matchNumber, syncData);
+      
+      print('成功根據比賽ID同步數據到賽程');
+    } catch (e) {
+      print('根據比賽ID同步數據時發生錯誤：$e');
+      throw '根據比賽ID同步數據失敗：$e';
     }
   }
 }

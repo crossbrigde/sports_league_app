@@ -30,7 +30,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 20),
             _buildMainButton(
               context,
-              '單淘賽',
+              '淘汰賽', // Changed from '單淘賽'
               Icons.list_alt,
               () {
                 Navigator.push(

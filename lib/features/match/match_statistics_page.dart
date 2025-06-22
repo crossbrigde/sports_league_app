@@ -51,12 +51,14 @@ class MatchStatisticsPage extends StatelessWidget {
   Map<String, dynamic> _calculateStatistics() {
     print('開始計算統計數據，比賽數量: ${matches.length}');
     
-    // 初始化統計數據 - 修正部位名稱以匹配實際數據格式
+    // 初始化統計數據 - 支援兩種部位命名方式
     Map<String, int> positionHits = {
       'head': 0,
       'body': 0,
-      'leftHand': 0,  // 修正：使用leftHand而不是leftArm
-      'rightHand': 0, // 修正：使用rightHand而不是rightArm
+      'leftHand': 0,
+      'rightHand': 0,
+      'leftArm': 0,   // 新增：支援 leftArm
+      'rightArm': 0,  // 新增：支援 rightArm
       'leftLeg': 0,
       'rightLeg': 0,
     };
@@ -159,16 +161,51 @@ class MatchStatisticsPage extends StatelessWidget {
             }
           });
         }
+        
+        // 處理第四種格式：使用 scores.redScores 和 scores.blueScores
+        final scores = judgment['scores'] as Map<String, dynamic>?;
+        if (scores != null) {
+          print('處理第四種格式: scores=$scores');
+          
+          final redScores = scores['redScores'] as Map<String, dynamic>?;
+          final blueScores = scores['blueScores'] as Map<String, dynamic>?;
+          
+          if (redScores != null) {
+            redScores.forEach((position, value) {
+              // 跳過 total 字段
+              if (position != 'total' && value is int && value > 0 && positionHits.containsKey(position)) {
+                print('紅方命中 $position: $value 分');
+                positionHits[position] = (positionHits[position] ?? 0) + 1;
+                matchPlayerHitPositions[match.redPlayer]!.add(position);
+              }
+            });
+          }
+          
+          if (blueScores != null) {
+            blueScores.forEach((position, value) {
+              // 跳過 total 字段
+              if (position != 'total' && value is int && value > 0 && positionHits.containsKey(position)) {
+                print('藍方命中 $position: $value 分');
+                positionHits[position] = (positionHits[position] ?? 0) + 1;
+                matchPlayerHitPositions[match.bluePlayer]!.add(position);
+              }
+            });
+          }
+        }
       }
       
-      // 檢查在這場比賽中是否有選手打中對手的四肢 - 修正部位名稱
+      // 檢查在這場比賽中是否有選手打中對手的四肢 - 支援兩種命名方式
       matchPlayerHitPositions.forEach((player, positions) {
-        if (positions.contains('leftHand') &&   // 修正：使用leftHand
-            positions.contains('rightHand') &&  // 修正：使用rightHand
-            positions.contains('leftLeg') &&
-            positions.contains('rightLeg')) {
+        // 檢查是否打中四肢（支援 leftHand/rightHand 或 leftArm/rightArm）
+        bool hitLeftArm = positions.contains('leftHand') || positions.contains('leftArm');
+        bool hitRightArm = positions.contains('rightHand') || positions.contains('rightArm');
+        bool hitLeftLeg = positions.contains('leftLeg');
+        bool hitRightLeg = positions.contains('rightLeg');
+        
+        if (hitLeftArm && hitRightArm && hitLeftLeg && hitRightLeg) {
           if (!playersHitAllLimbs.contains(player)) {
             playersHitAllLimbs.add(player);
+            print('發現打中四肢的選手: $player');
           }
         }
       });
@@ -184,12 +221,14 @@ class MatchStatisticsPage extends StatelessWidget {
       }
     });
 
-    // 轉換部位名稱為中文 - 修正部位名稱映射
+    // 轉換部位名稱為中文 - 支援兩種命名方式
     final positionNameMap = {
       'head': '頭部',
       'body': '身體',
-      'leftHand': '左手',  // 修正：使用leftHand
-      'rightHand': '右手', // 修正：使用rightHand
+      'leftHand': '左手',
+      'rightHand': '右手',
+      'leftArm': '左手',   // 新增：leftArm 也對應到左手
+      'rightArm': '右手',  // 新增：rightArm 也對應到右手
       'leftLeg': '左腳',
       'rightLeg': '右腳',
     };

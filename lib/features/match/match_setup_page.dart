@@ -22,9 +22,49 @@ class _MatchSetupPageState extends State<MatchSetupPage> {
   String redPlayerId = '';
   String bluePlayerId = '';
   String matchNumber = '';
+  bool _isLoadingMatchNumber = true;
   
   // 判斷是否為單淘汰賽
   bool get isSingleElimination => widget.tournament.type == 'single_elimination';
+  
+  @override
+  void initState() {
+    super.initState();
+    _generateNextMatchNumber();
+  }
+  
+  // 自動生成下一個場次號碼
+  Future<void> _generateNextMatchNumber() async {
+    try {
+      // 查詢該賽程下的所有比賽，獲取最大的場次號碼
+      final matchesSnapshot = await _matchService.firestore
+          .collection('matches')
+          .where('basic_info.tournamentId', isEqualTo: widget.tournament.id)
+          .get();
+      
+      int maxMatchNumber = 0;
+      
+      for (final doc in matchesSnapshot.docs) {
+        final data = doc.data();
+        final matchNumberStr = data['basic_info']?['matchNumber'] ?? '0';
+        final currentMatchNumber = int.tryParse(matchNumberStr.toString()) ?? 0;
+        if (currentMatchNumber > maxMatchNumber) {
+          maxMatchNumber = currentMatchNumber;
+        }
+      }
+      
+      setState(() {
+        matchNumber = (maxMatchNumber + 1).toString();
+        _isLoadingMatchNumber = false;
+      });
+    } catch (e) {
+      print('生成場次號碼時發生錯誤: $e');
+      setState(() {
+        matchNumber = '1'; // 默認從1開始
+        _isLoadingMatchNumber = false;
+      });
+    }
+  }
   
   // 通用名稱驗證函數
   String? validateName(String? value, String role) {
@@ -92,24 +132,51 @@ class _MatchSetupPageState extends State<MatchSetupPage> {
                 onSaved: (value) => bluePlayerId = value ?? '',
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: '場次',
-                  border: OutlineInputBorder(),
+              // 自動生成的場次顯示
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(4.0),
                 ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '請輸入場次';
-                  }
-                  return null;
-                },
-                onSaved: (value) => matchNumber = value ?? '',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '場次',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _isLoadingMatchNumber
+                        ? const Row(
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              SizedBox(width: 8),
+                              Text('生成中...'),
+                            ],
+                          )
+                        : Text(
+                            matchNumber,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: _isLoadingMatchNumber ? null : () {
                     if (_formKey.currentState!.validate()) {
                       _formKey.currentState!.save();
                       if (isSingleElimination) {

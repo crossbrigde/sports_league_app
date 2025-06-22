@@ -18,9 +18,9 @@ const database = getDatabase(app);
 
 // 更新版本號
 const versionRef = ref(database, 'version');
-set(versionRef, '1.4.3')
+set(versionRef, '1.8.0')  // 從1.4.3更新為1.8.0
   .then(() => {
-    console.log('版本已成功更新為1.4.3');
+    console.log('版本已成功更新為1.8.0');
     process.exit(0);
   })
   .catch((error) => {

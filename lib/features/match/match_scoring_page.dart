@@ -276,7 +276,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     
     // 設置對話框寬度為屏幕寬度的85%，但不超過500
     final dialogWidth = (screenWidth * 0.85).clamp(0.0, 500.0);
-    // 設置對話框高度為屏幕高度的75%，確保不會太高，減少溢出可能性
+    // 設置對話框高度為屏幕高度75%，確保不會太高，減少溢出可能性
     final dialogHeight = (screenHeight * 0.75).clamp(0.0, 650.0);
     
     showGeneralDialog(
@@ -1023,8 +1023,35 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
       print('- winner: ${updatedMatch.winner}');
       print('- redPlayer: ${updatedMatch.redPlayer}');
       print('- bluePlayer: ${updatedMatch.bluePlayer}');
+      print('- tournamentId: ${updatedMatch.tournamentId}');
       
-      await _bracketService.handleMatchCompletion(updatedMatch);
+      // 獲取賽程類型
+      String tournamentType = 'single_elimination'; // 預設為單淘汰賽
+      if (updatedMatch.tournamentId.isNotEmpty) {
+        try {
+          final tournamentDoc = await FirebaseFirestore.instance
+              .collection('tournaments')
+              .doc(updatedMatch.tournamentId)
+              .get();
+          
+          if (tournamentDoc.exists) {
+            tournamentType = tournamentDoc.data()?['type'] ?? 'single_elimination';
+            print('賽程類型: $tournamentType');
+          }
+        } catch (e) {
+          print('獲取賽程類型時發生錯誤: $e');
+        }
+      }
+      
+      // 根據賽程類型選擇不同的處理方法
+      if (tournamentType == 'double_elimination') {
+        print('使用雙淘汰賽晉級邏輯');
+        await _bracketService.handleDoubleEliminationMatchCompletion(updatedMatch);
+      } else {
+        print('使用單淘汰賽晉級邏輯');
+        await _bracketService.handleMatchCompletion(updatedMatch);
+      }
+      
       print('已成功調用自動晉級邏輯');
       
     } catch (e) {

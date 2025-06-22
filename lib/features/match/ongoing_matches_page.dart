@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/match_service.dart';
 import '../../core/services/tournament_service.dart';
+import '../../core/services/tournament_bracket_service.dart';
 import 'match_scoring_page.dart';
 import '../../core/models/tournament.dart';
 import '../../core/models/match.dart';
@@ -597,10 +598,28 @@ class _OngoingMatchesPageState extends State<OngoingMatchesPage> {
               Navigator.pop(context);
               
               try {
+                // 檢查是否有輪空選手
+                final bool hasEmptyPlayer = redPlayer == '輪空' || bluePlayer == '輪空';
+                
+                // 更新選手名稱
                 await _firestore.collection('matches').doc(matchId).update({
                   'basic_info.redPlayer': redPlayer,
                   'basic_info.bluePlayer': bluePlayer,
                 });
+                
+                // 如果有輪空選手，檢查並處理輪空晉級
+                if (hasEmptyPlayer) {
+                  // 獲取比賽狀態
+                  final matchDoc = await _firestore.collection('matches').doc(matchId).get();
+                  final basicInfo = matchDoc.data()?['basic_info'] as Map<String, dynamic>? ?? {};
+                  final status = basicInfo['status'] as String? ?? 'pending';
+                  
+                  // 如果比賽狀態為 ongoing，處理輪空晉級
+                  if (status == 'ongoing') {
+                    final tournamentBracketService = TournamentBracketService();
+                    await tournamentBracketService.checkAndHandleByeAdvancement(matchId);
+                  }
+                }
                 
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

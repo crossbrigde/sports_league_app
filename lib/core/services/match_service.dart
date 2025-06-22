@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/match.dart';
 import '../models/tournament.dart';
+import 'tournament_bracket_service.dart';
 
 class MatchService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -105,18 +106,18 @@ class MatchService {
   Future<Map<Tournament, List<Match>>> getActiveTournamentsWithMatches() async {
     print('正在查詢活躍賽程及其比賽');
     
-    // 獲取所有活躍賽程
+    // 獲取所有進行中的賽程（修改查詢條件）
     final tournamentsSnapshot = await _firestore
         .collection('tournaments')
-        .where('status', isEqualTo: 'active')
+        .where('status', isEqualTo: 'ongoing')  // 改為 'ongoing'
         .orderBy('createdAt', descending: true)
         .get();
     
     final Map<Tournament, List<Match>> result = {};
     
-    // 如果沒有活躍賽程，返回空結果
+    // 如果沒有進行中的賽程，返回空結果
     if (tournamentsSnapshot.docs.isEmpty) {
-      print('沒有找到活躍賽程');
+      print('沒有找到進行中的賽程');
       return result;
     }
     
@@ -227,6 +228,28 @@ class MatchService {
       
       final docRef = await _firestore.collection('matches').add(matchData);
       print('比賽創建成功，ID：${docRef.id}');
+      
+      // 檢查是否有輪空選手並處理自動晉級
+      if (match.status == 'ongoing' && 
+          (match.redPlayer == 'BYE' || match.bluePlayer == 'BYE')) {
+        // 檢查賽程類型
+        final tournamentDoc = await _firestore
+            .collection('tournaments')
+            .doc(match.tournamentId)
+            .get();
+            
+        if (tournamentDoc.exists) {
+          final tournamentData = tournamentDoc.data() as Map<String, dynamic>;
+          // 如果是淘汰賽類型，處理輪空晉級
+          if (tournamentData['type'] == 'single_elimination' || 
+              tournamentData['type'] == 'double_elimination') {
+            // 使用 TournamentBracketService 處理輪空晉級
+            final bracketService = TournamentBracketService();
+            await bracketService.checkAndHandleByeAdvancement(docRef.id);
+          }
+        }
+      }
+      
       return docRef.id;
     } catch (e) {
       print('創建比賽時發生錯誤：$e');
