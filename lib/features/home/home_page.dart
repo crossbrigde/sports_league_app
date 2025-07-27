@@ -17,7 +17,7 @@ class HomePage extends StatelessWidget {
           children: <Widget>[
             _buildMainButton(
               context,
-              '建立賽程',
+              '賽程管理',
               Icons.add_chart,
               () {
                 Navigator.push(
@@ -31,7 +31,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 20),
             _buildMainButton(
               context,
-              '賽程管理',
+              '淘汰賽', // Changed from '單淘賽'
               Icons.list_alt,
               () {
                 Navigator.push(
@@ -45,7 +45,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 20),
             _buildMainButton(
               context,
-              '進行比賽',
+              '積分賽',
               Icons.sports_martial_arts,
               () {
                 Navigator.push(

@@ -319,7 +319,7 @@ function showAddScheduleModal() {
   document.getElementById('schedule-id').value = '';
   document.getElementById('schedule-modal-title').textContent = '新增賽程';
   
-  // 載入比賽選項
+  // 載入比賽選項到賽程模態框
   loadMatchOptions();
   
   // 顯示模態框

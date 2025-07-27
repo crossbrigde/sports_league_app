@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
-import '../../models/match.dart';
-import 'models/tournament.dart';
-import '../tournament/services/tournament_bracket_service.dart';
-import '../tournament/services/double_elimination.dart';
-// 移除這行未使用的導入
-// import 'all_ongoing_matches_page.dart'; 
+import '../../core/models/match.dart';
+import '../../core/models/tournament.dart';
+import '../../core/services/tournament_bracket_service.dart';
+import '../../core/services/tournament_service.dart';
+import '../../features/tournament/services/double_elimination.dart';
 
 // 將_WinnerResult類移到頂層
 class _WinnerResult {
@@ -259,10 +258,6 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     );
   }
 
-  // 移除以下未使用的方法：
-  // - _showTimeUpDialog
-  // - _showTargetPointsReachedDialog
-
   void _showJudgmentDialog() {
     // 打開對話框前先清空臨時得分
     tempRedPoints.clear();
@@ -272,13 +267,13 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
     
     // 獲取屏幕尺寸
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.of(context).size.width;
     final screenWidth = screenSize.width;
     final screenHeight = screenSize.height;
     
     // 設置對話框寬度為屏幕寬度的85%，但不超過500
     final dialogWidth = (screenWidth * 0.85).clamp(0.0, 500.0);
-    // 設置對話框高度為屏幕高度的75%，確保不會太高，減少溢出可能性
+    // 設置對話框高度為屏幕高度75%，確保不會太高，減少溢出可能性
     final dialogHeight = (screenHeight * 0.75).clamp(0.0, 650.0);
     
     showGeneralDialog(
@@ -963,8 +958,26 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
         'timestamps.endTime': FieldValue.serverTimestamp(),
       });
       
-      // 處理賽事的自動晉級邏輯
-      await _handleTournamentAdvancement(winner);
+      // 同步比賽數據到賽程集合
+      if (widget.match.tournamentId.isNotEmpty) {
+        final tournamentService = TournamentService();
+        await tournamentService.syncMatchToTournament(
+          widget.match.tournamentId,
+          widget.match.matchNumber,
+          {
+            'bluePlayer': widget.match.bluePlayer,
+            'redPlayer': widget.match.redPlayer,
+            'status': 'completed',
+            'winner': winner,
+            'winReason': reason,
+          },
+        );
+      }
+      
+      // 處理單淘汰賽的自動晉級邏輯
+      if (widget.match.nextMatchId != null && widget.match.slotInNext != null) {
+        await _handleTournamentAdvancement(winner);
+      }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -990,54 +1003,57 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
   // 處理賽事的自動晉級邏輯
   Future<void> _handleTournamentAdvancement(String winner) async {
     try {
-      // 更新賽程中的比賽狀態
-      final doc = await _firestore.collection('tournaments').doc(widget.match.tournamentId).get();
-      if (doc.exists) {
-        final tournamentData = doc.data() as Map<String, dynamic>;
-        final matches = tournamentData['matches'] as Map<String, dynamic>?;
-        final tournamentType = tournamentData['type'] as String?;
-        
-        if (matches != null) {
-          // 找到當前比賽
-          String? currentMatchId;
-          matches.forEach((id, matchData) {
-            if (matchData['matchNumber'] == widget.match.matchNumber) {
-              currentMatchId = id;
-            }
-          });
+      print('開始處理晉級邏輯: matchId=${widget.match.id}, winner=$winner');
+      print('Match nextMatchId: ${widget.match.nextMatchId}, slotInNext: ${widget.match.slotInNext}');
+      
+      // 使用TournamentBracketService處理自動晉級
+      final updatedMatch = widget.match.copyWith(
+        status: 'completed',
+        winner: winner,
+        winReason: 'match_completed',
+      );
+      
+      print('調用handleMatchCompletion前的Match信息:');
+      print('- ID: ${updatedMatch.id}');
+      print('- nextMatchId: ${updatedMatch.nextMatchId}');
+      print('- slotInNext: ${updatedMatch.slotInNext}');
+      print('- winner: ${updatedMatch.winner}');
+      print('- redPlayer: ${updatedMatch.redPlayer}');
+      print('- bluePlayer: ${updatedMatch.bluePlayer}');
+      print('- tournamentId: ${updatedMatch.tournamentId}');
+      
+      // 獲取賽程類型
+      String tournamentType = 'single_elimination'; // 預設為單淘汰賽
+      if (updatedMatch.tournamentId.isNotEmpty) {
+        try {
+          final tournamentDoc = await FirebaseFirestore.instance
+              .collection('tournaments')
+              .doc(updatedMatch.tournamentId)
+              .get();
           
-          if (currentMatchId != null) {
-            // 更新當前比賽狀態
-            matches[currentMatchId!]['status'] = 'completed';
-            matches[currentMatchId!]['winner'] = winner == 'red' ? widget.match.redPlayer : widget.match.bluePlayer;
-            
-            // 更新賽程
-            await _firestore.collection('tournaments').doc(widget.match.tournamentId).update({
-              'matches': matches,
-            });
-            
-            // 根據賽事類型使用對應的服務處理自動晉級
-            final updatedMatch = widget.match.copyWith(
-              status: 'completed',
-              winner: winner == 'red' ? 'red' : 'blue',
-            );
-            
-            if (tournamentType == 'double_elimination') {
-              // 雙淘汰賽使用 DoubleEliminationService - 處理所有比賽
-              await _doubleEliminationService.handleMatchCompletion(updatedMatch);
-              print('已調用雙淘汰賽自動晉級邏輯 - 比賽: ${updatedMatch.matchNumber}, 勝者: ${updatedMatch.winner}');
-            } else {
-              // 單淘汰賽使用 TournamentBracketService - 只處理有nextMatchId的比賽
-              if (widget.match.nextMatchId != null && widget.match.slotInNext != null) {
-                await _bracketService.handleMatchCompletion(updatedMatch);
-                print('已調用單淘汰賽自動晉級邏輯');
-              }
-            }
+          if (tournamentDoc.exists) {
+            tournamentType = tournamentDoc.data()?['type'] ?? 'single_elimination';
+            print('賽程類型: $tournamentType');
           }
+        } catch (e) {
+          print('獲取賽程類型時發生錯誤: $e');
         }
       }
+      
+      // 根據賽程類型選擇不同的處理方法
+      if (tournamentType == 'double_elimination') {
+        print('使用雙淘汰賽晉級邏輯');
+        await _bracketService.handleDoubleEliminationMatchCompletion(updatedMatch);
+      } else {
+        print('使用單淘汰賽晉級邏輯');
+        await _bracketService.handleMatchCompletion(updatedMatch);
+      }
+      
+      print('已成功調用自動晉級邏輯');
+      
     } catch (e) {
       print('處理晉級邏輯時發生錯誤：$e');
+      print('錯誤堆疊：${e.toString()}');
     }
   }
 }

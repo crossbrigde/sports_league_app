@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sports_league_app/features/match/models/tournament.dart';
-import 'package:sports_league_app/features/match/services/tournament_service.dart';
+import 'package:sports_league_app/core/models/tournament.dart';
+import 'package:sports_league_app/core/services/tournament_service.dart';
 import 'package:sports_league_app/features/match/match_setup_page.dart';  // 添加這行
 
 class SelectMatchPage extends StatefulWidget {
