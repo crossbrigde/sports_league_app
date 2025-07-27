@@ -5,14 +5,14 @@
   "targets": {
     "sports-league-app-d25e2": {
       "hosting": {
-        "main-app": [
-          "sports-league-app-d25e2"
-        ],
         "scoreboard": [
           "scoreboard-app"
         ],
         "kali-admin-panel": [
           "kali-admin-panel"
+        ],
+        "default": [
+          "sports-league-app-d25e2"
         ]
       }
     }

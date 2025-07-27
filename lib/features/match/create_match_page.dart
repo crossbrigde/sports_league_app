@@ -3,6 +3,7 @@ import 'package:sports_league_app/features/match/models/tournament.dart';
 import 'package:uuid/uuid.dart';
 import 'services/tournament_service.dart';
 import '../../features/tournament/services/tournament_bracket_service.dart';
+import '../../features/tournament/services/double_elimination.dart';
 import '../../features/tournament/tournament_detail_page.dart';
 
 class CreateMatchPage extends StatefulWidget {
@@ -15,6 +16,7 @@ class CreateMatchPage extends StatefulWidget {
 class _CreateMatchPageState extends State<CreateMatchPage> {
   final _tournamentService = TournamentService();
   final _bracketService = TournamentBracketService();
+  final _doubleEliminationService = DoubleEliminationService();
   final _formKey = GlobalKey<FormState>();
   String tournamentName = '';
   bool isPointTimeSystem = false;
@@ -22,6 +24,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
   int targetPoints = 0;
   int matchMinutes = 0;
   bool isSingleElimination = false;
+  bool isDoubleElimination = false;
   int numPlayers = 8; // 預設參賽人數
 
   @override
@@ -129,10 +132,25 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                       onChanged: (bool? value) {
                         setState(() {
                           isSingleElimination = value ?? false;
+                          if (isSingleElimination) {
+                            isDoubleElimination = false;
+                          }
                         });
                       },
                     ),
-                    if (isSingleElimination) ...[  
+                    CheckboxListTile(
+                      title: const Text('雙淘汰賽'),
+                      value: isDoubleElimination,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          isDoubleElimination = value ?? false;
+                          if (isDoubleElimination) {
+                            isSingleElimination = false;
+                          }
+                        });
+                      },
+                    ),
+                    if (isSingleElimination || isDoubleElimination) ...[  
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Column(
@@ -198,14 +216,55 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                                     actions: [
                                       TextButton(
                                         onPressed: () {
-                                          Navigator.pop(context); // 關閉對話框
-                                          Navigator.pop(context); // 返回上一頁
+                                          Navigator.pop(context);
+                                          Navigator.pop(context);
                                         },
                                         child: const Text('返回'),
                                       ),
                                       ElevatedButton(
                                         onPressed: () {
-                                          Navigator.pop(context); // 關閉對話框
+                                          Navigator.pop(context);
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => TournamentDetailPage(
+                                                tournamentId: tournament.id,
+                                                tournamentName: tournament.name,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('進入賽程'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else if (isDoubleElimination) {
+                                final tournament = await _doubleEliminationService.createDoubleEliminationTournament(
+                                  name: tournamentName,
+                                  numPlayers: numPlayers,
+                                  targetPoints: isPointTimeSystem ? targetPoints : null,
+                                  matchMinutes: (isPointTimeSystem || isTimeSystem) ? matchMinutes : null,
+                                );
+
+                                if (!mounted) return;
+
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('雙淘汰賽創建成功！'),
+                                    content: Text('賽程「$tournamentName」已成功創建'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text('返回'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
@@ -246,14 +305,14 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                                     actions: [
                                       TextButton(
                                         onPressed: () {
-                                          Navigator.pop(context); // 關閉對話框
-                                          Navigator.pop(context); // 返回上一頁
+                                          Navigator.pop(context);
+                                          Navigator.pop(context);
                                         },
                                         child: const Text('返回'),
                                       ),
                                       ElevatedButton(
                                         onPressed: () {
-                                          Navigator.pop(context); // 關閉對話框
+                                          Navigator.pop(context);
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(

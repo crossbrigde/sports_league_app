@@ -1,0 +1,64 @@
+{
+  "tournament_type": "double_elimination",
+  "num_players": 8,
+  "winners_bracket": {
+    "rounds": [
+      {
+        "round": 1,
+        "matches": 4,
+        "match_details": [
+          {"id": "W1", "losers_to": "L1", "slot_in_losers": "red"},
+          {"id": "W2", "losers_to": "L1", "slot_in_losers": "blue"},
+          {"id": "W3", "losers_to": "L2", "slot_in_losers": "red"},
+          {"id": "W4", "losers_to": "L2", "slot_in_losers": "blue"}
+        ]
+      },
+      {
+        "round": 2,
+        "matches": 2,
+        "match_details": [
+          {"id": "W5", "losers_to": "L3", "slot_in_losers": "red"},
+          {"id": "W6", "losers_to": "L4", "slot_in_losers": "red"}
+        ]
+      },
+      {
+        "round": "final",
+        "matches": 1,
+        "match_details": [
+          {"id": "W7", "losers_to": "L6", "slot_in_losers": "blue"}
+        ]
+      }
+    ]
+  },
+  "losers_bracket": {
+    "rounds": [
+      {
+        "round": 1,
+        "matches": ["L1", "L2"],
+        "winners_to": ["L3", "L4"]
+      },
+      {
+        "round": 2,
+        "matches": ["L3"],
+        "winners_to": ["L5"]
+      },
+      {
+        "round": 3,
+        "matches": ["L4"],
+        "winners_to": ["L5"]
+      },
+      {
+        "round": 4,
+        "matches": ["L5"],
+        "winners_to": ["L6"],
+        "description": "L3勝者 vs L4勝者"
+      },
+      {
+        "round": 5,
+        "matches": ["L6"],
+        "description": "LB Final vs W Final Loser"
+      }
+    ]
+  },
+  "description": "8人雙淘汰賽模板，按照正確的晉級規則設計"
+}

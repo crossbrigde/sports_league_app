@@ -41,6 +41,10 @@ class Match {
   final String? nextMatchId;  // 下一場比賽的ID
   final String? slotInNext;   // 在下一場比賽中的位置（redPlayer或bluePlayer）
   
+  // 雙淘汰賽相關
+  final String? bracket;      // 比賽所屬組別（Winners/Losers/Grand Final）
+  final String? losersDestination; // 敗者應該進入的敗組比賽ID
+  
   Match({
     required this.id,
     required this.name,
@@ -67,6 +71,8 @@ class Match {
     this.round,
     this.nextMatchId,
     this.slotInNext,
+    this.bracket,
+    this.losersDestination,
   });
   
   // 從舊版本的數據創建Match對象的工廠方法
@@ -194,6 +200,8 @@ class Match {
       round: basicInfo['round'] != null ? (basicInfo['round'] as num).toInt() : null,
       nextMatchId: basicInfo['nextMatchId'],
       slotInNext: basicInfo['slotInNext'],
+      bracket: basicInfo['bracket'],
+      losersDestination: basicInfo['losersDestination'],
     );
   }
 
@@ -234,6 +242,8 @@ class Match {
         round: basicInfo['round'],
         nextMatchId: basicInfo['nextMatchId'],
         slotInNext: basicInfo['slotInNext'],
+        bracket: basicInfo['bracket'],
+        losersDestination: basicInfo['losersDestination'],
       );
     } else {
       // 使用舊格式解析
@@ -320,6 +330,8 @@ class Match {
       'round': round,
       'nextMatchId': nextMatchId,
       'slotInNext': slotInNext,
+      'bracket': bracket,
+      'losersDestination': losersDestination,
     },
     'scores': {
       'redScores': redScores,
@@ -375,6 +387,8 @@ class Match {
     int? round,
     String? nextMatchId,
     String? slotInNext,
+    String? bracket,
+    String? losersDestination,
   }) => Match(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -400,7 +414,9 @@ class Match {
     winReason: winReason ?? this.winReason,
     round: round ?? this.round,
     nextMatchId: nextMatchId ?? this.nextMatchId,
-    slotInNext: slotInNext ?? this.slotInNext,
+      slotInNext: slotInNext ?? this.slotInNext,
+      bracket: bracket ?? this.bracket,
+      losersDestination: losersDestination ?? this.losersDestination,
   );
   
   bool get isOngoing => status == 'ongoing';

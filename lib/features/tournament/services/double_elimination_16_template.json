@@ -1,0 +1,105 @@
+{
+  "tournament_type": "double_elimination",
+  "num_players": 16,
+  "description": "已修正邏輯的16人雙淘汰賽模板，維持原有命名風格。",
+  "winners_bracket": {
+    "rounds": [
+      {
+        "round": 1,
+        "matches": 8,
+        "match_details": [
+          { "id": "W1", "losers_to": "L1", "slot_in_losers": "red" },
+          { "id": "W2", "losers_to": "L1", "slot_in_losers": "blue" },
+          { "id": "W3", "losers_to": "L2", "slot_in_losers": "red" },
+          { "id": "W4", "losers_to": "L2", "slot_in_losers": "blue" },
+          { "id": "W5", "losers_to": "L3", "slot_in_losers": "red" },
+          { "id": "W6", "losers_to": "L3", "slot_in_losers": "blue" },
+          { "id": "W7", "losers_to": "L4", "slot_in_losers": "red" },
+          { "id": "W8", "losers_to": "L4", "slot_in_losers": "blue" }
+        ]
+      },
+      {
+        "round": 2,
+        "matches": 4,
+        "match_details": [
+          { "id": "W9", "losers_to": "L5", "slot_in_losers": "blue" },
+          { "id": "W10", "losers_to": "L6", "slot_in_losers": "blue" },
+          { "id": "W11", "losers_to": "L7", "slot_in_losers": "blue" },
+          { "id": "W12", "losers_to": "L8", "slot_in_losers": "blue" }
+        ]
+      },
+      {
+        "round": 3,
+        "name": "Winners' Semifinals",
+        "matches": 2,
+        "match_details": [
+          { "id": "W13", "losers_to": "L12", "slot_in_losers": "blue" },
+          { "id": "W14", "losers_to": "L11", "slot_in_losers": "blue" }
+        ]
+      },
+      {
+        "round": 4,
+        "name": "Winners' Final",
+        "matches": 1,
+        "match_details": [
+          { "id": "W15", "losers_to": "L14", "slot_in_losers": "blue" }
+        ]
+      }
+    ]
+  },
+  "losers_bracket": {
+    "rounds": [
+      {
+        "round": 1,
+        "matches": [
+          { "id": "L1", "red": "W1 敗者", "blue": "W2 敗者" },
+          { "id": "L2", "red": "W3 敗者", "blue": "W4 敗者" },
+          { "id": "L3", "red": "W5 敗者", "blue": "W6 敗者" },
+          { "id": "L4", "red": "W7 敗者", "blue": "W8 敗者" }
+        ]
+      },
+      {
+        "round": 2,
+        "matches": [
+          { "id": "L5", "red": "L1 勝者", "blue": "W9 敗者" },
+          { "id": "L6", "red": "L2 勝者", "blue": "W10 敗者" },
+          { "id": "L7", "red": "L3 勝者", "blue": "W11 敗者" },
+          { "id": "L8", "red": "L4 勝者", "blue": "W12 敗者" }
+        ]
+      },
+      {
+        "round": 3,
+        "matches": [
+          { "id": "L9", "red": "L5 勝者", "blue": "L6 勝者" },
+          { "id": "L10", "red": "L7 勝者", "blue": "L8 勝者" }
+        ]
+      },
+      {
+        "round": 4,
+        "description": "敗部晉級者對上勝部四強的敗者",
+        "matches": [
+          { "id": "L11", "red": "L9 勝者", "blue": "W14 敗者" },
+          { "id": "L12", "red": "L10 勝者", "blue": "W13 敗者" }
+        ]
+      },
+      {
+        "round": 5,
+        "matches": [
+          { "id": "L13", "red": "L11 勝者", "blue": "L12 勝者" }
+        ]
+      },
+      {
+        "round": 6,
+        "name": "Losers' Final",
+        "matches": [
+          { "id": "L14", "red": "L13 勝者", "blue": "W15 敗者" }
+        ]
+      }
+    ]
+  },
+  "grand_final": {
+    "id": "GF",
+    "red": "W15 勝者",
+    "blue": "L14 勝者"
+  }
+}

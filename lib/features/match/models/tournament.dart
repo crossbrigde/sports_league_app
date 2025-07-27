@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Tournament {
   final String id;
   final String name;
-  final String type; // 'regular', 'single_elimination', 'double_elimination', 'round_robin'
+  final String type; // 'regular', 'single_elimination', 'e_elimination', 'round_robin'
   final DateTime createdAt;
   final int? targetPoints;  // 添加這個屬性，使用可空類型
   final int? matchMinutes;  // 添加這個屬性，使用可空類型

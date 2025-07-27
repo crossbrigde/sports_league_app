@@ -30,3 +30,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  # 添加資源檔案配置
+  assets:
+    - lib/features/tournament/services/double_elimination_8_template.json
+    - lib/features/tournament/services/double_elimination_16_template.json
