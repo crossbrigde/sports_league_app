@@ -4,8 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
-import 'package:sports_league_app/features/match/models/tournament.dart';
-import '../../../models/match.dart';
+import '../../../core/models/tournament.dart';
+import '../../../core/models/match.dart';
 
 class DoubleEliminationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -22,15 +22,24 @@ class DoubleEliminationService {
     required int numPlayers,
     int? targetPoints,
     int? matchMinutes,
+    List<String>? playerNames,
+    bool randomPairing = false,
   }) async {
     // 創建賽程ID
     final tournamentId = _uuid.v4();
     
     // 創建參賽者列表
     final participants = List.generate(numPlayers, (index) {
+      String playerName;
+      if (playerNames != null && index < playerNames.length && playerNames[index].isNotEmpty) {
+        playerName = playerNames[index];
+      } else {
+        playerName = 'PLAYER${index + 1}';
+      }
+      
       return {
-        'id': 'PLAYER${index + 1}',
-        'displayName': 'PLAYER${index + 1}',
+        'id': playerName,
+        'displayName': playerName,
         'userId': null,
       };
     });

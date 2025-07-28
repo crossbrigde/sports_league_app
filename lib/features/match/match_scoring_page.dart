@@ -267,7 +267,7 @@ class _MatchScoringPageState extends State<MatchScoringPage> {
     _realtimeDb.child('temp_scores').child(widget.match.id).set(null);
     
     // 獲取屏幕尺寸
-    final screenSize = MediaQuery.of(context).size.width;
+    final screenSize = MediaQuery.of(context).size;
     final screenWidth = screenSize.width;
     final screenHeight = screenSize.height;
     

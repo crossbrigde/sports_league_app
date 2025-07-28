@@ -75,4 +75,9 @@ class Tournament {
       if (matches != null) 'matches': matches,
     };
   }
+  
+  // 添加 toJson 方法
+  Map<String, dynamic> toJson() {
+    return toFirestore();
+  }
 }

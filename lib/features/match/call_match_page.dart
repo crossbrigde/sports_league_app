@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/match.dart';
-import 'models/tournament.dart';
-import 'services/tournament_service.dart';
+import '../../core/models/match.dart';
+import '../../core/models/tournament.dart';
+import '../../core/services/tournament_service.dart';
 import '../tournament/services/double_elimination.dart';
-import '../tournament/services/tournament_bracket_service.dart';
+import '../../core/services/tournament_bracket_service.dart';
 
 class CallMatchPage extends StatefulWidget {
   const CallMatchPage({super.key});
